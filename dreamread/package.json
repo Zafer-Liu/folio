@@ -1,7 +1,7 @@
 {
-  "name": "dreamread",
+  "name": "folio",
   "version": "1.0.0",
-  "description": "Dreamread · 让经典鲜活起来",
+  "description": "活页 Folio · 让经典开口说话",
   "private": true,
   "scripts": {
     "start": "node server.js"

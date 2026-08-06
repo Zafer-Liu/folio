@@ -4,11 +4,10 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5500;
 
-// Static files from mvp/
-app.use(express.static(path.join(__dirname, 'mvp')));
+// Static files from current directory
+app.use(express.static(__dirname));
 
 // Expose server-configured secrets so the frontend can use them as defaults.
-// If the user has overridden them locally (dev panel localStorage), those take precedence.
 app.get('/api/config', (_req, res) => {
   const env = (k) => {
     const val = process.env[k];
@@ -24,11 +23,11 @@ app.get('/api/config', (_req, res) => {
   });
 });
 
-// SPA fallback — any unknown route serves index.html
+// SPA fallback
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'mvp', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`Dreamread server listening on port ${PORT}`);
+  console.log('活页 Folio on port ' + PORT);
 });

@@ -1,10 +1,4 @@
 node_modules/
 .claude/
-.workbuddy/
-*.py
 *.docx
-analyze*.py
-build_data.py
-extract_docx.py
-比赛要求说明.md
-Dockerfile
+*.py
