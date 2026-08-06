@@ -226,7 +226,10 @@
           <span class="wip-badge">制作中</span>
           <div class="placeholder">${b.title}<br><small>${b.author}</small></div>
         </div>
-        <div class="shelf-hover"><div class="sh-sum">${b.summary || ''}</div><div class="sh-wip">制作中 · 敬请期待</div></div>
+        <div class="shelf-hover" style="justify-content:center;align-items:center;text-align:center;">
+          <div><div class="sh-sum" style="margin-bottom:14px;">${b.summary || ''}</div>
+          <div class="sh-wip">制作中 · 敬请期待</div></div>
+        </div>
       </div>`;
     }).join('');
 
