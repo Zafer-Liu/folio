@@ -500,6 +500,16 @@
     border-radius: 8px; font-family: var(--sans); font-size: 13px;
     background: var(--bg-card); color: var(--ink);
   }
+  .setting-row select {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--line);
+    border-radius: 8px; font-family: var(--sans); font-size: 13px;
+    background: var(--bg-card); color: var(--ink);
+    cursor: pointer; appearance: auto;
+  }
+  .setting-row input[type="range"] {
+    padding: 0; border: none; background: transparent;
+    accent-color: var(--accent); cursor: pointer;
+  }
 
   /* ===== Dev Panel / Modal ===== */
   .dev-mask {
@@ -657,6 +667,7 @@
       <button class="tool-btn" id="btn-speak-act" onclick="app.speakAct()">🔊 朗读本幕</button>
       <button class="tool-btn" id="btn-stop-speak" onclick="app.speakAct()" style="display:none;">⏹ 停止</button>
       <button class="tool-btn" onclick="app.go('chat')">💬 和圣地亚哥对话</button>
+      <button class="tool-btn" onclick="app.openSettings()" style="margin-left:auto;" title="设置">⚙</button>
     </div>
   </section>
 
@@ -677,6 +688,7 @@
         <div class="story-bar">
           <span class="story-persona" id="story-persona"></span>
           <button class="tool-btn" id="btn-chat-mute" onclick="app.toggleChatMute()" title="点击静音">🔊</button>
+          <button class="tool-btn" onclick="app.openSettings()" title="设置">⚙</button>
           <button class="tool-btn" onclick="app.restartStory()">↺ 换视角</button>
         </div>
         <div class="chat-log" id="chat-log"></div>
@@ -776,6 +788,49 @@
         <button class="tool-btn" onclick="app.clearStoryCache()">清除剧情缓存</button>
         <span id="cache-status" class="dev-saved"></span>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 设置面板 ========== -->
+<div class="dev-mask" id="settings-mask" onclick="app.closeSettings(event)">
+  <div class="dev-panel" onclick="event.stopPropagation()">
+    <div class="dev-head">
+      <h3>⚙ 设置</h3>
+      <button class="dev-close" onclick="app.closeSettings()">✕</button>
+    </div>
+    <p class="dev-note">自定义朗读音色、语速与插图风格。所有设置仅保存在本地浏览器。</p>
+
+    <div class="dev-group">
+      <div class="dev-glabel">📢 语音设置</div>
+      <div class="setting-row"><label>TTS 音色</label>
+        <select id="cfg-voice"></select>
+      </div>
+      <div class="setting-row" style="align-items:center;">
+        <label>TTS 语速</label>
+        <div style="display:flex;align-items:center;gap:10px;flex:1;">
+          <input type="range" id="cfg-rate" min="0.5" max="1.5" step="0.05" value="0.95" style="flex:1;">
+          <span id="cfg-rate-val" style="font-family:var(--sans);font-size:13px;color:var(--ink-2);min-width:36px;text-align:right;">0.95</span>
+        </div>
+      </div>
+      <div class="setting-row" style="margin-top:8px;">
+        <label></label>
+        <button class="tool-btn" onclick="app.previewVoice()" style="font-size:12px;">🔊 试听当前音色</button>
+      </div>
+    </div>
+
+    <div class="dev-group" style="border-top:1px solid var(--line);padding-top:16px;">
+      <div class="dev-glabel">🎨 插图风格</div>
+      <p class="dev-note" style="margin-bottom:8px;">自定义风格会附加到书籍默认风格之后，保持人物一致性的同时调整画面方向。</p>
+      <div class="setting-row"><label>风格描述</label>
+        <input id="cfg-img-style" placeholder="留空使用默认风格，例如：水墨画风、赛博朋克、黑白版画…">
+      </div>
+    </div>
+
+    <div class="dev-actions">
+      <button class="tool-btn primary" onclick="app.saveSettings()">保存设置</button>
+      <button class="tool-btn" onclick="app.resetSettings()">恢复默认</button>
+      <span id="settings-saved" class="dev-saved"></span>
     </div>
   </div>
 </div>

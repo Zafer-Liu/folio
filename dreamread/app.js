@@ -62,6 +62,27 @@
   }
   function setCfg(k, v) { try { localStorage.setItem('dev_' + k, v); } catch (e) {} }
 
+  /* ============== 用户设置 ============== */
+  // 与 dev_*（开发者/密钥）分开，user_* 存用户偏好：音色、语速、图片风格
+  function getUserCfg(k, fallback) {
+    try {
+      const v = localStorage.getItem('user_' + k);
+      if (v != null && v !== '') return v;
+    } catch (e) {}
+    return fallback;
+  }
+  function setUserCfg(k, v) { try { localStorage.setItem('user_' + k, v); } catch (e) {} }
+
+  const VOICE_OPTIONS = [
+    { id: 'audiobook_male_1', label: '沉稳男声（默认）' },
+    { id: 'presenter_male', label: '播报男声' },
+    { id: 'male-qn-jingying', label: '清亮男声' },
+    { id: 'audiobook_female_1', label: '沉稳女声' },
+    { id: 'female-shaonv', label: '少女音' },
+    { id: 'female-yujie', label: '御姐音' },
+    { id: 'qinghezhaohui_seven', label: '温和女声' },
+  ];
+
   /* ============== 激活码解锁状态 ============== */
   // 激活后：可上传自定义书籍、可生成自定义素材。未激活用户只能查看已生成的素材。
   function isUnlocked() { try { return localStorage.getItem('unlocked') === '1'; } catch (e) { return false; } }
@@ -529,7 +550,7 @@
         // 降级浏览器 TTS
         if (!('speechSynthesis' in window)) { resolve(); return; }
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-CN'; u.rate = o.rate || 0.95; u.pitch = 0.95;
+        u.lang = 'zh-CN'; u.rate = o.rate || parseFloat(getUserCfg('tts_rate', '0.95')); u.pitch = 0.95;
         const v = getVoice(); if (v) u.voice = v;
         u.onend = resolve;
         u.onerror = resolve;
@@ -546,7 +567,7 @@
           text: text,
           stream: false,
           output_format: 'hex',
-          voice_setting: { voice_id: o.voice || 'audiobook_male_1', speed: o.rate || 0.95, vol: 1, pitch: 0 },
+          voice_setting: { voice_id: o.voice || getUserCfg('tts_voice', 'audiobook_male_1'), speed: o.rate || parseFloat(getUserCfg('tts_rate', '0.95')), vol: 1, pitch: 0 },
           audio_setting: { format: 'mp3', sample_rate: 32000, bitrate: 128000, channel: 1 }
         })
       }).then(async (res) => {
@@ -1127,7 +1148,9 @@ ${allText}
     // 若是本地持久化的相对路径（/api/asset/...），补全为完整 URL，MiniMax 才能访问
     const refUrl = ref ? resolveAssetUrl(ref) : null;
     const hint = refUrl ? '（严格参照参考图中的人物长相、发须与服装，保持同一角色）' : '';
-    const fullPrompt = `电影分镜插画，${a.style}。${a.character}${hint}。场景：${scene}。${a.location}。电影级构图与光影，景深层次，情绪饱满，细腻笔触，无文字水印。`;
+    const userStyle = getUserCfg('img_style', '');
+    const style = userStyle ? `${a.style}，额外要求：${userStyle}` : a.style;
+    const fullPrompt = `电影分镜插画，${style}。${a.character}${hint}。场景：${scene}。${a.location}。电影级构图与光影，景深层次，情绪饱满，细腻笔触，无文字水印。`;
     return generateImageRaw(fullPrompt, '16:9', refUrl);
   }
 
@@ -1220,8 +1243,8 @@ ${allText}
   async function speakMaybe(text, opts) {
     const key = getCfg('mm_voice');
     const o = opts || {};
-    const voice = o.voice || 'audiobook_male_1';
-    const rate = o.rate || 0.95;
+    const voice = o.voice || getUserCfg('tts_voice', 'audiobook_male_1');
+    const rate = o.rate || parseFloat(getUserCfg('tts_rate', '0.95'));
 
     // 1. 先查 TTS 缓存
     const cached = getCachedTTS(text, voice, rate);
@@ -1287,6 +1310,54 @@ ${allText}
     const s = $('#dev-saved');
     s.textContent = '✓ 已保存';
     setTimeout(() => { s.textContent = ''; }, 2000);
+  }
+
+  /* ============== 用户设置面板 ============== */
+  function openSettings(e) {
+    if (e && e.target !== e.currentTarget) return;
+    // 填充当前值到 UI
+    const sel = $('#cfg-voice');
+    sel.innerHTML = VOICE_OPTIONS.map(o => `<option value="${o.id}"${o.id === getUserCfg('tts_voice', 'audiobook_male_1') ? ' selected' : ''}>${o.label}</option>`).join('');
+    const rate = parseFloat(getUserCfg('tts_rate', '0.95'));
+    const slider = $('#cfg-rate');
+    slider.value = rate;
+    $('#cfg-rate-val').textContent = rate.toFixed(2);
+    slider.oninput = () => { $('#cfg-rate-val').textContent = parseFloat(slider.value).toFixed(2); };
+    $('#cfg-img-style').value = getUserCfg('img_style', '');
+    $('#settings-mask').classList.add('show');
+  }
+  function closeSettings(e) {
+    if (e && e.target !== e.currentTarget) return;
+    $('#settings-mask').classList.remove('show');
+  }
+  function saveSettings() {
+    setUserCfg('tts_voice', $('#cfg-voice').value);
+    setUserCfg('tts_rate', $('#cfg-rate').value);
+    setUserCfg('img_style', $('#cfg-img-style').value.trim());
+    const s = $('#settings-saved');
+    s.textContent = '✓ 已保存';
+    setTimeout(() => { s.textContent = ''; }, 2000);
+  }
+  function resetSettings() {
+    setUserCfg('tts_voice', 'audiobook_male_1');
+    setUserCfg('tts_rate', '0.95');
+    setUserCfg('img_style', '');
+    // 回填 UI
+    $('#cfg-voice').value = 'audiobook_male_1';
+    $('#cfg-rate').value = '0.95';
+    $('#cfg-rate-val').textContent = '0.95';
+    $('#cfg-img-style').value = '';
+    const s = $('#settings-saved');
+    s.textContent = '✓ 已恢复默认';
+    setTimeout(() => { s.textContent = ''; }, 2000);
+    // 清除 TTS 缓存（旧音色/语速的缓存已不匹配，清掉释放空间）
+    try { localStorage.removeItem('tts_cache_v1'); } catch (e) {}
+  }
+  function previewVoice() {
+    const voice = $('#cfg-voice').value || 'audiobook_male_1';
+    const rate = parseFloat($('#cfg-rate').value) || 0.95;
+    // 用一段短文本试听
+    speakMaybe('你好，这是当前音色的试听效果。', { voice: voice, rate: rate });
   }
 
   /* ============== 锚点资产：人物三视图 + 场景背景图（按书绑定） ============== */
@@ -1713,12 +1784,18 @@ ${allText}
     }
 
     window.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { stopSpeak(); closeDev(); closeAdd(); }
+      if (e.key === 'Escape') { stopSpeak(); closeDev(); closeAdd(); closeSettings(); }
       // 开发者模式：Ctrl+Shift+D
       if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
         e.preventDefault();
         const mask = $('#dev-mask');
         if (mask.classList.contains('show')) closeDev(); else openDev();
+      }
+      // 设置面板：Ctrl+Shift+S
+      if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        const mask = $('#settings-mask');
+        if (mask.classList.contains('show')) closeSettings(); else openSettings();
       }
     });
   });
@@ -1737,6 +1814,11 @@ ${allText}
     openDev,
     closeDev,
     saveDev,
+    openSettings,
+    closeSettings,
+    saveSettings,
+    resetSettings,
+    previewVoice,
     genAnchors,
     openAdd,
     closeAdd,
