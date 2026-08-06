@@ -80,26 +80,25 @@ app.get('/api/config', (_req, res) => {
 
 const MCP_PROTOCOL_VERSION = '2026-07-28';
 
-// --- MCP Tool definitions ---
 const MCP_TOOLS = [
   {
     name: 'folio_narrate',
-    description: 'Generate the next turn of an interactive narrative set in Hemingway\'s "The Old Man and the Sea". You choose a persona (observer / santiago / manolin), provide the player\'s action or dialogue, and the agent returns a cinematic literary passage, a scene description for illustration, and three branching choices. This is the core interactive-storytelling engine of 活页 Folio.',
+    description: 'Generate the next turn of an interactive narrative set in Hemingway\'s "The Old Man and the Sea". You choose a persona (observer / santiago / manolin), provide the player\'s action or dialogue, and the agent returns a cinematic literary passage, a scene description for illustration, and three branching choices.',
     inputSchema: {
       type: 'object',
       properties: {
         persona: {
           type: 'string',
           enum: ['observer', 'santiago', 'manolin'],
-          description: 'The narrative perspective. observer = third-person omniscient narrator, santiago = first-person as the old fisherman, manolin = first-person as the boy.'
+          description: 'The narrative perspective.'
         },
         player_action: {
           type: 'string',
-          description: 'What the player says or does this turn (e.g. "你为什么坚持出海？" or "我拉紧鱼线，手臂开始抽筋").'
+          description: 'What the player says or does this turn.'
         },
         history_summary: {
           type: 'string',
-          description: 'Brief summary of the story so far, so the agent knows what has already happened. Omit on the very first turn.'
+          description: 'Brief summary of the story so far. Omit on the very first turn.'
         }
       },
       required: ['persona', 'player_action']
@@ -107,13 +106,13 @@ const MCP_TOOLS = [
   },
   {
     name: 'folio_illustrate',
-    description: 'Generate a cinematic illustration for a scene from the narrative, using MiniMax image-01. Returns a persistent image URL backed by Railway volume storage — the image will not expire even if the upstream CDN link does.',
+    description: 'Generate a cinematic illustration for a scene using MiniMax image-01. Returns a persistent image URL backed by volume storage.',
     inputSchema: {
       type: 'object',
       properties: {
         scene_description: {
           type: 'string',
-          description: 'One-sentence scene description in Chinese or English, e.g. "老人在月光下划着小船，湾流深蓝如墨".'
+          description: 'One-sentence scene description in Chinese or English.'
         },
         style: {
           type: 'string',
@@ -126,18 +125,18 @@ const MCP_TOOLS = [
   },
   {
     name: 'folio_speak',
-    description: 'Synthesize speech from text using MiniMax T2A, returning hex-encoded MP3 audio. Supports per-persona voice presets for immersive audio narration.',
+    description: 'Synthesize speech from text using MiniMax T2A, returning hex-encoded MP3 audio.',
     inputSchema: {
       type: 'object',
       properties: {
         text: {
           type: 'string',
-          description: 'The text to synthesize into speech (Chinese and/or English).'
+          description: 'The text to synthesize into speech.'
         },
         voice: {
           type: 'string',
           enum: ['audiobook_male_1', 'presenter_male', 'male-qn-jingying'],
-          description: 'Voice preset. audiobook_male_1 = deep narrator (observer), presenter_male = weathered old man (santiago), male-qn-jingying = bright young voice (manolin).',
+          description: 'Voice preset.',
           default: 'audiobook_male_1'
         }
       },
@@ -146,7 +145,6 @@ const MCP_TOOLS = [
   }
 ];
 
-// --- JSON-RPC helpers ---
 function jsonRpcError(id, code, message, data) {
   const err = { code, message };
   if (data) err.data = data;
@@ -170,24 +168,20 @@ function validateMCPHeaders(req) {
   return errors;
 }
 
-// --- MCP endpoint ---
 app.post('/mcp', express.json({ limit: '1mb' }), async (req, res) => {
   const body = req.body;
 
-  // Minimal JSON-RPC envelope check
   if (!body || body.jsonrpc !== '2.0') {
     return res.status(400).json(jsonRpcError(null, -32600, 'Invalid Request: jsonrpc must be "2.0"'));
   }
 
   const { method, params, id } = body;
 
-  // Validate Streamable HTTP headers
   const headerErrors = validateMCPHeaders(req);
   if (headerErrors.length > 0) {
     return res.status(400).json(jsonRpcError(id, -32020, 'Header mismatch: ' + headerErrors.join('; ')));
   }
 
-  // Verify Mcp-Method header matches body
   const headerMethod = req.headers['mcp-method'];
   if (headerMethod !== method) {
     return res.status(400).json(jsonRpcError(id, -32020,
@@ -196,32 +190,23 @@ app.post('/mcp', express.json({ limit: '1mb' }), async (req, res) => {
 
   try {
     switch (method) {
-      // --- Lifecycle ---
       case 'initialize': {
-        const result = {
+        return res.json(jsonRpcResult(id, {
           protocolVersion: MCP_PROTOCOL_VERSION,
           capabilities: { tools: {} },
-          serverInfo: {
-            name: '活页 Folio MCP',
-            version: '1.0.0'
-          }
-        };
-        return res.json(jsonRpcResult(id, result));
+          serverInfo: { name: '活页 Folio MCP', version: '1.0.0' }
+        }));
       }
 
       case 'notifications/initialized':
-        // No response body for notifications per 2026 spec — but we return 202
         return res.status(202).end();
 
-      // --- Discovery ---
       case 'tools/list': {
         return res.json(jsonRpcResult(id, { tools: MCP_TOOLS }));
       }
 
-      // --- Invocation ---
       case 'tools/call': {
         const toolName = params?.name;
-        // Validate Mcp-Name header
         const headerName = req.headers['mcp-name'];
         if (headerName !== toolName) {
           return res.status(400).json(jsonRpcError(id, -32020,
@@ -232,44 +217,34 @@ app.post('/mcp', express.json({ limit: '1mb' }), async (req, res) => {
 
         switch (toolName) {
           case 'folio_narrate': {
-            // ---- Build the storytelling prompt ----
             const personaId = args.persona || 'observer';
             const playerAction = args.player_action || '';
             const historySummary = args.history_summary || '';
 
             const PERSONAS = {
               observer: { nm: '旁观者', persp: '你是一个全知第三人称的叙述者。你俯瞰整个故事，决定叙事的焦点和节奏。你像海明威一样写作：克制的句子，精确的细节，内在的张力。' },
-              santiago: { nm: '圣地亚哥', persp: '你是圣地亚哥，古巴老渔夫。你以第一人称讲述自己的故事。你说话简洁，话里带着海风和汗水的咸涩，骨子里透着不认输的骄傲。你只知道自己亲眼所见、亲手所感的事。' },
-              manolin: { nm: '马诺林', persp: '你是马诺林，深爱着老人的男孩。你以第一人称讲述，你的话语里充满对老人的关切和担忧。你的视角更年轻、更细腻，留意到成年人忽略的细节。' }
+              santiago: { nm: '圣地亚哥', persp: '你是圣地亚哥，古巴老渔夫。你以第一人称讲述自己的故事。你说话简洁，话里带着海风和汗水的咸涩，骨子里透着不认输的骄傲。' },
+              manolin: { nm: '马诺林', persp: '你是马诺林，深爱着老人的男孩。你以第一人称讲述，你的话语里充满对老人的关切和担忧。' }
             };
-
             const p = PERSONAS[personaId] || PERSONAS.observer;
 
             const systemPrompt = `你是一个互动叙事引擎，正在运行《老人与海》的沉浸式文学体验。
 视角：${p.nm}。${p.persp}
 
-原著脉络（五幕结构，故事必须沿此推进）：
+原著脉络（五幕结构）：
 第一幕·出海：老人84天没捕到鱼，男孩马诺林被迫离开他，老人独自出海。
 第二幕·搏斗：老人钓到一条比船还长的大马林鱼，与之搏斗三天三夜。
 第三幕·征服：老人终于杀死大鱼，将它绑在船边，开始返航。
-第四幕·鲨群：鲨鱼循血而来，一条接一条啃食大鱼的肉。老人用鱼叉、用桨与之搏斗。
-第五幕·归航：老人带回一副巨大鱼骨架，精疲力尽倒在床铺上。男孩守着他。
+第四幕·鲨群：鲨鱼循血而来，一条接一条啃食大鱼的肉。
+第五幕·归航：老人带回一副巨大鱼骨架，精疲力尽倒在床铺上。
 
 ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回合，故事从出海前开始。'}
 
-玩家刚刚的选择/输入：「${playerAction}」
+玩家输入：「${playerAction}」
 
-请以 JSON 格式返回下一回合内容：
-{
-  "narrative": "4-6句话的叙事段落，文学性强，有画面感。可自然引用原著中的台词。海明威式的克制笔法。",
-  "scene": "一句场景描述，用于配图生成（中文，侧重光线、构图、情绪）。",
-  "choices": ["选项1（行动导向）", "选项2（观察导向）", "选项3（内省导向）"]
-}
-
-要求：
-- 三个选项的倾向各不相同（行动/观察/内省），提供真正不同的叙事路径。
-- 随回合数推进，故事需向下一幕靠拢。
-- 叙事忠于原著精神，不杜撰主要情节。`;
+返回 JSON：
+{ "narrative": "4-6句叙事段落，文学性强", "scene": "一句场景描述用于配图", "choices": ["选项1（行动）", "选项2（观察）", "选项3（内省）"] }
+三个选项倾向各不相同。叙事忠于原著。`;
 
             if (!llmKey() || !llmBase()) {
               return res.json(jsonRpcResult(id, {
@@ -301,7 +276,6 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
 
               const data = await llmResp.json();
               const raw = data?.choices?.[0]?.message?.content || '';
-              // Parse JSON from LLM (strip markdown fences, think tags)
               let parsed;
               try {
                 const cleaned = raw.replace(/<think[\s\S]*?<\/think>/gi, '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
@@ -313,9 +287,7 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
               }
 
               return res.json(jsonRpcResult(id, {
-                content: [
-                  { type: 'text', text: JSON.stringify(parsed, null, 2) }
-                ]
+                content: [{ type: 'text', text: JSON.stringify(parsed, null, 2) }]
               }));
             } catch (e) {
               return res.json(jsonRpcResult(id, {
@@ -363,7 +335,6 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
                 }));
               }
 
-              // Persist to volume so the URL survives CDN expiry
               let persistentUrl = rawUrl;
               try {
                 const hash = crypto.createHash('md5').update(rawUrl).digest('hex');
@@ -380,8 +351,7 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
                 }
                 persistentUrl = '/api/asset/' + filename;
               } catch (e) {
-                console.warn('[mcp] image persistence failed, using raw URL:', e.message);
-                persistentUrl = rawUrl;
+                console.warn('[mcp] image persistence failed:', e.message);
               }
 
               return res.json(jsonRpcResult(id, {
@@ -452,7 +422,6 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
         }
       }
 
-      // --- Ping (non-standard, helpful for health checks) ---
       case 'ping': {
         return res.json(jsonRpcResult(id, { ok: true }));
       }
@@ -467,10 +436,8 @@ ${historySummary ? '已发生的剧情：' + historySummary : '这是第一回�
 });
 
 // ========================
-//  Static & SPA fallback
+//  Health check
 // ========================
-
-app.use(express.static(path.join(__dirname, 'dreamread')));
 
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -481,8 +448,14 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// ========================
+//  Static & SPA fallback
+// ========================
+
+app.use(express.static(__dirname));
+
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'dreamread', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ========================
