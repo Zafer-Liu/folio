@@ -1012,6 +1012,25 @@ ${allText}
     await advanceStory(q);
   }
 
+  /* ============== 服务端图片持久化 ============== */
+  // 将 MiniMax CDN 图片下载并保存到服务端 volume，返回永不失效的本地 URL
+  async function persistImage(externalUrl) {
+    if (!externalUrl) return null;
+    try {
+      const res = await fetch('/api/asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: externalUrl })
+      });
+      if (!res.ok) return externalUrl; // 服务端不可用时回退原始 URL
+      const data = await res.json();
+      return data.url; // /api/asset/xxx.png
+    } catch (e) {
+      // 本地开发无服务端 → 直接返回原始 URL
+      return externalUrl;
+    }
+  }
+
   /* ============== MiniMax 图片生成 ============== */
   // 场景插图：拼入锚点 + 以该书的人物三视图作为参考图（图生图）
   async function generateImage(scene, bookId) {
@@ -1019,12 +1038,23 @@ ${allText}
     const a = getAnchors(id);
     const assets = loadAnchorAssets(id);
     const ref = assets.char_turnaround || null; // 参考图 → 图生图
-    const hint = ref ? '（严格参照参考图中的人物长相、发须与服装，保持同一角色）' : '';
+    // 若是本地持久化的相对路径（/api/asset/...），补全为完整 URL，MiniMax 才能访问
+    const refUrl = ref ? resolveAssetUrl(ref) : null;
+    const hint = refUrl ? '（严格参照参考图中的人物长相、发须与服装，保持同一角色）' : '';
     const fullPrompt = `电影分镜插画，${a.style}。${a.character}${hint}。场景：${scene}。${a.location}。电影级构图与光影，景深层次，情绪饱满，细腻笔触，无文字水印。`;
-    return generateImageRaw(fullPrompt, '16:9', ref);
+    return generateImageRaw(fullPrompt, '16:9', refUrl);
+  }
+
+  // 将本地资产路径（/api/asset/xxx）解析为外部可访问的完整 URL
+  function resolveAssetUrl(url) {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/api/asset/')) return window.location.origin + url;
+    return url;
   }
 
   // 原始生成：完整 prompt。若传入 subjectRef（图片URL），走图生图（主体参考）
+  // 生成后自动通过 /api/asset 持久化到服务端 volume
   async function generateImageRaw(prompt, aspect, subjectRef) {
     const key = getCfg('mm_img');
     if (!key) return null;
@@ -1045,7 +1075,9 @@ ${allText}
         return null;
       }
       const data = await res.json();
-      return (data && data.data && data.data.image_urls && data.data.image_urls[0]) || null;
+      const rawUrl = (data && data.data && data.data.image_urls && data.data.image_urls[0]) || null;
+      // 持久化到服务端 volume，避免 MiniMax CDN 过期
+      return rawUrl ? await persistImage(rawUrl) : null;
     } catch (e) {
       if (subjectRef) return generateImageRaw(prompt, aspect, null);
       return null;
