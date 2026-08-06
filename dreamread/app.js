@@ -663,6 +663,7 @@ ${allText}
       turn = { narrative: '（海上起了雾——叙事引擎出错了：' + e.message + '）', scene: '', choices: [] };
     }
     thinking.remove();
+    if (thinking._timer) clearInterval(thinking._timer);
     storyHistory.push({ role: 'assistant', content: JSON.stringify(turn) });
     const narrEl = addNarr(turn.narrative);
     setChoices(turn.choices || []);
@@ -968,10 +969,26 @@ ${allText}
   function pushThinking() {
     const log = $('#chat-log');
     const t = document.createElement('div');
-    t.className = 'msg bot';
-    t.textContent = '……';
+    t.className = 'msg bot thinking-msg';
+    // 动态海明威式氛围文案，每 1.8s 轮换
+    const lines = [
+      '海风翻过一页稿纸…',
+      '老人在湾流深处拉紧钓索…',
+      '云层裂开，金色的光落进水里…',
+      '远处传来马林鱼摆尾的闷响…',
+      '船桨划过寂静的海面…',
+      '圣地亚哥眯起眼，望向天际…'
+    ];
+    let i = 0;
+    t.innerHTML = `<span class="thinking-line">${lines[0]}</span><span class="thinking-dots"><i>·</i><i>·</i><i>·</i></span>`;
     log.appendChild(t);
     log.scrollTop = log.scrollHeight;
+    const timer = setInterval(() => {
+      i = (i + 1) % lines.length;
+      const span = t.querySelector('.thinking-line');
+      if (span) span.textContent = lines[i];
+    }, 2200);
+    t._timer = timer;
     return t;
   }
 

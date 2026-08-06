@@ -372,6 +372,45 @@
   .msg.bot .img-skel { width: 100%; aspect-ratio: 16/10; border-radius: 10px; margin-bottom: 10px; background: linear-gradient(90deg,#eee9db,#f5f1e6,#eee9db); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
   @keyframes shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
 
+  /* 动态思考状态 —— 海浪般的呼吸感 */
+  .thinking-msg {
+    display: flex !important; align-items: center; gap: 6px;
+    min-height: 44px; padding: 10px 18px !important;
+    animation: think-in 0.35s ease-out;
+  }
+  @keyframes think-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .thinking-line {
+    font-style: italic; color: var(--ink-2);
+    transition: opacity 0.5s ease;
+  }
+  .thinking-dots { display: inline-flex; gap: 3px; }
+  .thinking-dots i {
+    font-style: normal; font-size: 18px; color: var(--accent);
+    animation: dot-breathe 1.4s ease-in-out infinite;
+  }
+  .thinking-dots i:nth-child(2) { animation-delay: 0.18s; }
+  .thinking-dots i:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes dot-breathe {
+    0%, 100% { opacity: 0.25; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  /* 插图生成时的升级骨架屏 —— 暖金色扫描线 */
+  .msg.bot .img-skel {
+    position: relative; overflow: hidden;
+    background: linear-gradient(120deg, #f2ece0 0%, #fdf8f0 25%, #f2ece0 45%, #faf5eb 65%, #f2ece0 100%);
+    background-size: 300% 100%;
+    animation: skel-sweep 2.2s ease-in-out infinite;
+  }
+  .msg.bot .img-skel::after {
+    content: '🎨 正在为这一幕绘制插图…';
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--sans); font-size: 13px; color: var(--ink-3); letter-spacing: 0.06em;
+    animation: skel-hint 2.2s ease-in-out infinite;
+  }
+  @keyframes skel-sweep { 0%{background-position:150% 0;} 100%{background-position:-150% 0;} }
+  @keyframes skel-hint { 0%,100%{opacity:0.55;} 50%{opacity:1;} }
+
   /* ===== 沉浸对话：视角选择 ===== */
   .persona-head { text-align: center; margin: 12px 0 28px; }
   .persona-head h2 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
