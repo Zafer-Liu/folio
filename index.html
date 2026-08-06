@@ -569,47 +569,182 @@
   .anchor-item .ph { aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-family: var(--sans); font-size: 12px; }
   .anchor-item .ph .spinner { margin-right: 6px; }
 
-  /* ===== Mobile ===== */
-  @media (max-width: 480px) {
-    main { padding: 24px 16px 100px; }
+  /* ===== Responsive: Tablet (≤768px) ===== */
+  @media (max-width: 768px) {
+    main { padding: 28px 20px 110px; }
 
-    /* topbar */
-    .topbar { padding: 10px 12px; gap: 8px; }
-    .topbar .brand { font-size: 14px; }
-    .topbar .brand small { display: none; }
-    .nav-btn { padding: 5px 9px; font-size: 12px; }
+    /* shelf heading */
+    .shelf-h1 { font-size: 34px; }
+    .shelf-h1 .en { font-size: 12px; }
 
     /* cover */
-    .cover h1 { font-size: 32px; }
-    .cover .charcard { min-width: calc(100% - 0px); display: flex; width: 100%; margin: 0 0 10px; }
-    .cover .chars { display: flex; flex-direction: column; }
-    .cover .start { width: 100%; text-align: center; padding: 14px; }
+    .cover h1 { font-size: 36px; }
+    .cover h1 .en { font-size: 14px; }
+    .cover .intro { font-size: 14px; line-height: 1.85; }
+
+    /* acts */
+    .act-card { gap: 16px; padding: 16px; }
+    .act-card .meta h3 { font-size: 16px; }
+    .act-card .meta .summary { font-size: 12.5px; }
 
     /* reader */
-    .reader h2 { font-size: 22px; }
-    .para { font-size: 15px; line-height: 1.9; }
-    .quote-block { font-size: 16px; padding: 20px 12px; }
-    .choice-card { padding: 20px 16px; }
-    .choice-card h3 { font-size: 16px; }
-    .choice-opt { font-size: 14px; padding: 12px 14px; }
+    .reader h2 { font-size: 26px; }
+    .para { font-size: 16px; line-height: 1.95; }
+
+    /* persona */
+    .persona-head h2 { font-size: 24px; }
+    .persona-grid { max-width: 520px; }
+
+    /* story */
+    .chat-header h2 { font-size: 22px; }
+
+    /* modals */
+    .dev-panel { max-width: calc(100vw - 48px); }
+    .dev-head h3 { font-size: 17px; }
+  }
+
+  /* ===== Responsive: Small tablet (≤600px) ===== */
+  @media (max-width: 600px) {
+    .topbar { padding: 11px 14px; gap: 10px; }
+    .topbar .brand { font-size: 14px; }
+
+    /* acts: stack image above text */
+    .act-card { grid-template-columns: 1fr; gap: 14px; padding: 14px; }
+    .act-card .illu { width: 100%; height: 180px; }
+
+    /* preset grid: single column */
+    .preset-grid { grid-template-columns: 1fr; }
+
+    .dev-panel { padding: 22px 18px; }
+  }
+
+  /* ===== Responsive: Mobile (≤480px) ===== */
+  @media (max-width: 480px) {
+    main { padding: 20px 14px 100px; }
+
+    /* topbar */
+    .topbar { padding: 9px 10px; gap: 6px; }
+    .topbar .brand { font-size: 13px; }
+    .topbar .brand small { display: none; }
+    .nav-btn { padding: 4px 7px; font-size: 11px; letter-spacing: 0.02em; }
+
+    /* shelf heading */
+    .shelf-h1 { font-size: 28px; letter-spacing: 0.04em; }
+    .shelf-h1 .en { font-size: 11px; margin-top: 6px; }
+    .shelf-lede { font-size: 13.5px; line-height: 1.8; max-width: 100%; }
+    .shelf-intro { margin-bottom: 24px; }
 
     /* bookshelf */
-    .bookshelf { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .bookshelf { grid-template-columns: repeat(2, 1fr); gap: 14px; }
     .shelf-book .wip-badge { top: 6px; left: 6px; font-size: 9px; padding: 2px 6px; }
-    .sh-wip { font-size: 11px; padding: 4px 0; }
+    .shelf-book .spine .cap { padding: 10px 8px 8px; }
+    .shelf-book .spine .cap .t { font-size: 13px; }
+    .shelf-book .spine .cap .a { font-size: 10px; }
+    .shelf-hover { padding: 12px 10px; }
+    .sh-sum { font-size: 11px; line-height: 1.65; }
+    .sh-enter, .sh-assets { font-size: 11px; padding: 6px 0; }
+    .sh-wip { font-size: 10px; padding: 4px 0; }
+
+    /* cover / book detail */
+    .cover { padding-top: 14px; }
+    .cover h1 { font-size: 28px; }
+    .cover h1 .en { font-size: 12px; margin-top: 6px; }
+    .cover .byline { font-size: 12px; margin-bottom: 18px; }
+    .cover .intro { font-size: 13px; line-height: 1.8; max-width: 100%; margin-bottom: 24px; }
+    .cover .charcard { min-width: calc(100% - 0px); display: flex; width: 100%; margin: 0 0 8px; padding: 12px 16px; }
+    .cover .chars { display: flex; flex-direction: column; }
+    .cover .start { width: 100%; text-align: center; padding: 12px; font-size: 14px; }
+    .mode-choose { gap: 10px; }
+
+    /* acts list */
+    .acts-list h2 { font-size: 20px; }
+    .acts-list .lede { font-size: 12px; margin-bottom: 20px; }
+    .act-card { gap: 12px; padding: 12px; margin-bottom: 12px; }
+    .act-card .illu { height: 160px; }
+    .act-card .meta h3 { font-size: 15px; }
+    .act-card .meta .sub { font-size: 12px; }
+    .act-card .meta .summary { font-size: 12px; line-height: 1.65; }
+
+    /* reader */
+    .reader .titleblock { padding: 4px 0 18px; }
+    .reader .tag { font-size: 11px; }
+    .reader h2 { font-size: 20px; }
+    .reader .sub { font-size: 12px; }
+    .reader .summary { font-size: 13px; padding: 12px 14px; margin-bottom: 20px; }
+    .reader .illu { margin: 4px 0 20px; }
+    .para { font-size: 15px; line-height: 1.9; text-indent: 1.8em; margin-bottom: 10px; }
+    .quote-block { font-size: 15px; padding: 18px 10px; margin: 24px 0; }
+    .choice-card { padding: 18px 14px; margin: 24px 0; }
+    .choice-card h3 { font-size: 15px; }
+    .choice-opt { font-size: 13px; padding: 10px 12px; }
 
     /* read-tools */
-    .read-tools { left: 12px; right: 12px; max-width: none; margin: 16px 0 0; padding: 6px; gap: 4px; }
-    .tool-btn { padding: 8px 10px; font-size: 12px; }
+    .read-tools { left: 10px; right: 10px; max-width: none; margin: 14px 0 0; padding: 5px 4px; gap: 2px; }
+    .tool-btn { padding: 7px 9px; font-size: 11px; gap: 4px; }
 
-    /* chat */
-    .chat-header .portrait { width: 72px; height: 72px; }
-    .chat-header h2 { font-size: 20px; }
-    .chat-header .desc { font-size: 13px; }
-    .msg { max-width: 90%; font-size: 13px; }
-    .chat-suggest button { font-size: 11px; padding: 5px 10px; }
+    /* persona pick */
+    .persona-head { margin: 8px 0 20px; }
+    .persona-head h2 { font-size: 22px; }
+    .persona-head p { font-size: 13px; line-height: 1.7; }
+    .persona-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; }
+    .persona-card { padding: 18px 16px; }
+    .persona-card .pic { font-size: 28px; margin-bottom: 8px; }
+    .persona-card .nm { font-size: 15px; }
+    .persona-card .ds { font-size: 12px; line-height: 1.65; }
+
+    /* chat / story */
+    .chat-wrap { max-width: 100%; }
+    .chat-header { padding: 16px 0 22px; }
+    .chat-header .portrait { width: 68px; height: 68px; }
+    .chat-header h2 { font-size: 18px; }
+    .chat-header .desc { font-size: 12.5px; line-height: 1.7; }
+    .chat-header .role { font-size: 12px; }
+    .msg { max-width: 90%; font-size: 13px; padding: 10px 14px; }
+    .msg.narr { font-size: 14px; line-height: 1.9; text-indent: 1.6em; }
+    .story-bar { gap: 6px; margin-bottom: 10px; padding-bottom: 10px; }
+    .story-persona { font-size: 12px; }
+    .story-choices { gap: 8px; margin: 6px 0 14px; }
+    .story-opt { padding: 14px 14px; font-size: 14px; gap: 10px; }
+    .story-opt .no { width: 24px; height: 24px; font-size: 12px; }
+    .chat-input { padding: 6px; gap: 4px; }
+    .chat-input input { padding: 6px 10px; font-size: 14px; }
+    .chat-input button { padding: 6px 14px; font-size: 12px; }
+    .chat-suggest { gap: 6px; margin: 10px 0 18px; }
+    .chat-suggest button { font-size: 11px; padding: 5px 9px; }
+    .preset-grid { gap: 8px; margin: 10px 0 16px; }
+    .preset-card { padding: 10px 12px; font-size: 13px; }
+    .preset-card .ic { font-size: 18px; }
+
+    /* about */
+    .about h2 { font-size: 20px; }
+    .about h3 { font-size: 14px; margin: 20px 0 6px; }
+    .about p, .about li { font-size: 13px; line-height: 1.8; }
+    .about .arch { padding: 14px; font-size: 12px; }
+    .about .arch .step { padding: 6px 0; }
+    .about code { font-size: 11px; }
+
+    /* account */
+    .account .acct-card { padding: 16px; }
+    .account .acct-row input { font-size: 13px; padding: 8px 10px; }
+
+    /* modals / settings */
+    .dev-mask { padding: 16px; }
+    .dev-panel { padding: 18px 14px; max-width: 100%; border-radius: 14px; max-height: 90vh; }
+    .dev-head h3 { font-size: 16px; }
+    .dev-note { font-size: 11px; line-height: 1.6; }
     .setting-row { flex-wrap: wrap; }
-    .setting-row label { min-width: 60px; }
+    .setting-row label { min-width: 55px; font-size: 12px; }
+    .setting-row input, .setting-row select { font-size: 12px; padding: 7px 10px; }
+    .dev-glabel { font-size: 11px; }
+
+    /* anchor grid */
+    .anchor-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .anchor-item .cap { font-size: 10px; padding: 4px 8px; }
+
+    /* add book */
+    .add-code input { font-size: 18px; letter-spacing: 0.3em; padding: 10px; }
+    .drop-zone { padding: 24px 12px; font-size: 13px; }
+    .gen-preview h4 { font-size: 17px; }
   }
 </style>
 </head>
