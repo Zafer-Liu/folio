@@ -1105,7 +1105,7 @@ ${allText}
     log.scrollTop = log.scrollHeight;
     if (!chatMuted) {
       const textOnly = (typeof payload === 'string' ? payload : payload.text).replace(/<[^>]+>/g, '');
-      speakMaybe(textOnly, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null);
+      speakMaybe(textOnly);
     }
     return div;
   }
@@ -1280,10 +1280,11 @@ ${allText}
   }
 
   // 带视觉高亮的朗读：高亮指定 DOM 元素，播放结束后恢复
+  // 不在此处传入 voice/rate，由 speakMaybe 读取用户设置；Persoina 的 voice 仅作为初始建议
   async function speakNarr(text, el) {
-    if (!el) { await speakMaybe(text, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null); return; }
+    if (!el) { await speakMaybe(text); return; }
     el.classList.add('speaking');
-    await speakMaybe(text, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null);
+    await speakMaybe(text);
     el.classList.remove('speaking');
   }
 
