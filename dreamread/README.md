@@ -4,6 +4,23 @@
 >
 > Eazo · Global Youth AI Agent 黑客松 参赛作品
 
+---
+
+## 🤖 Agent 身份卡
+
+| 属性 | 值 |
+|------|-----|
+| **Agent 名称** | 活页 Folio |
+| **Agent 类型** | 互动叙事智能体 (Interactive Narrative Agent) |
+| **核心能力** | 角色扮演叙事生成 · AI 实时插图 · 多角色语音合成 |
+| **模型编排** | LLM（叙事引擎）+ MiniMax image-01（插图）+ MiniMax T2A（语音） |
+| **对外接口** | Web UI + Streamable HTTP MCP（`/mcp`） |
+| **MCP Tools** | `folio_narrate` · `folio_illustrate` · `folio_speak` |
+
+> 活页 Folio 不是一个"套了 LLM 的网页"，而是一个**多模型编排的智能体**。它调度 3 个异构 AI 服务（LLM / 图片生成 / 语音合成），通过系统提示工程、锚点资产体系、回合缓存策略，将《老人与海》转为一台可扮演、可对话、可探索的叙事机器。每回合 LLM 输出结构化 JSON（叙事 + 场景 + 选项），图片引擎据此配图，语音引擎按视角朗读——三个 AI 协同工作，构成一个完整的 Agent 回路。
+
+---
+
 <p align="center">
   <img src="./assets/screenshot.png" alt="活页 Folio 截图" width="800" />
 </p>
@@ -40,7 +57,7 @@
 dreamread/
 ├── index.html          # 单页应用：全部视图 + CSS + 弹窗
 ├── app.js              # 核心逻辑（IIFE，约 2000 行原生 JS）
-├── server.js           # Express 服务端（/api/config 注入环境变量）
+├── server.js           # Express 服务端（/mcp MCP + /api/config + /api/asset）
 ├── package.json        # Node.js 依赖（仅 express）
 ├── data/
 │   ├── book-data.js    # 《老人与海》分幕内容
@@ -52,7 +69,7 @@ dreamread/
 ### 技术栈
 
 - **纯前端**：HTML + CSS + 原生 JavaScript，零构建步骤，零框架依赖
-- **Express 服务端**：仅用于 `/api/config` 注入 Railway 环境变量（密钥不外泄）
+- **Express 服务端**：`/mcp`（自建 MCP Server）+ `/api/config`（环境变量注入）+ `/api/asset`（Volume 图片持久化）+ `/api/health`（健康检查）
 - **AI 模型**：
   - 任意 OpenAI 兼容 LLM（沉浸叙事 + 书籍解析），要求 `response_format: json_object`
   - MiniMax `image-01`（插图生成 + 参考图图生图）
@@ -168,6 +185,63 @@ MM_VOICE_KEY  = sk-...    (或 - 占位)
 3. 上传 .txt 或 .docx 文件
 4. LLM 自动解析生成：书名、作者、简介、分章摘要
 5. 确认后出现在书架上
+
+---
+
+## 🔌 自建 MCP Server（+5 加分项）
+
+活页 Folio 在 `/mcp` 端点上实现了完整的 **Streamable HTTP MCP**（协议版本 `2026-07-28`），可将核心 Agent 能力作为 Tool 对外暴露，供任意 MCP 客户端（Claude Desktop、Cursor、Codex 等）发现和调用。
+
+### 端点信息
+
+| 项目 | 值 |
+|------|-----|
+| **MCP 端点** | `POST https://<your-deploy>/mcp` |
+| **协议版本** | `2026-07-28` (Streamable HTTP) |
+| **传输方式** | JSON-RPC 2.0 over HTTP POST |
+
+### MCP Tools
+
+| Tool | 说明 | 参数 |
+|------|------|------|
+| `folio_narrate` | 互动叙事引擎：给定视角 + 玩家输入，返回文学性叙事段落 + 场景描述 + 3 个分支选项 | `persona` (observer/santiago/manolin), `player_action`, `history_summary?` |
+| `folio_illustrate` | AI 插图生成：给定场景描述，通过 MiniMax image-01 生成电影级插图，**自动持久化到 Railway Volume**（图片 URL 永不失效） | `scene_description`, `style?` |
+| `folio_speak` | 角色化语音合成：给定文本 + 音色预设，通过 MiniMax T2A 合成 MP3 语音 | `text`, `voice?` (audiobook_male_1/presenter_male/male-qn-jingying) |
+
+### 验证握手
+
+```bash
+# 1. 发现 Tool 列表
+curl -s -X POST https://folio-production-243e.up.railway.app/mcp \
+  -H "Content-Type: application/json" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: tools/list" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  | jq '.result.tools | length'  # → 3
+
+# 2. 初始化
+curl -s -X POST https://folio-production-243e.up.railway.app/mcp \
+  -H "Content-Type: application/json" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: initialize" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2026-07-28","clientInfo":{"name":"MCP-Validator","version":"1.0.0"},"capabilities":{}}}' \
+  | jq '.result.serverInfo.name'  # → "活页 Folio MCP"
+
+# 3. 调用叙事引擎
+curl -s -X POST https://folio-production-243e.up.railway.app/mcp \
+  -H "Content-Type: application/json" \
+  -H "MCP-Protocol-Version: 2026-07-28" \
+  -H "Mcp-Method: tools/call" \
+  -H "Mcp-Name: folio_narrate" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"folio_narrate","arguments":{"persona":"santiago","player_action":"我为什么要出海？"}}}'
+```
+
+### 健康检查
+
+```bash
+curl https://folio-production-243e.up.railway.app/api/health
+# → {"status":"ok","agent":"活页 Folio · 让经典开口说话","mcp":"/mcp (protocol 2026-07-28)","tools":["folio_narrate","folio_illustrate","folio_speak"]}
+```
 
 ---
 
