@@ -820,12 +820,17 @@ ${allText}
     const log = $('#chat-log');
     const div = document.createElement('div');
     div.className = 'msg bot narr';
+    div.title = '点击重新朗读';
     const span = document.createElement('span');
     span.textContent = text;
     div.appendChild(span);
+    // 点击叙事气泡可重新朗读
+    div.onclick = () => {
+      if (!chatMuted) speakNarr(text, div);
+    };
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
-    if (!chatMuted) speakMaybe(text, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null);
+    if (!chatMuted) speakNarr(text, div);
     return div;
   }
 
@@ -1165,13 +1170,67 @@ ${allText}
     }
   }
 
-  /* ============== MiniMax TTS（降级 Web Speech） ============== */
+  /* ============== MiniMax TTS（降级 Web Speech + 本地缓存） ============== */
   let mmAudio = null;
+  const TTS_CACHE_KEY = 'tts_cache_v1';
+
+  function loadTTSCache() {
+    try { return JSON.parse(localStorage.getItem(TTS_CACHE_KEY) || '{}'); } catch (e) { return {}; }
+  }
+
+  // 缓存键：voice + rate + 文本前 60 字符的 hash
+  function ttsCacheKey(text, voice, rate) {
+    const head = text.slice(0, 60).trim();
+    return voice + '|' + (rate || 0.95).toFixed(2) + '|' + simpleHash(head);
+  }
+
+  function simpleHash(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
+    return h.toString(36);
+  }
+
+  function getCachedTTS(text, voice, rate) {
+    return loadTTSCache()[ttsCacheKey(text, voice, rate)] || null;
+  }
+
+  function saveCachedTTS(text, voice, rate, hex) {
+    try {
+      const all = loadTTSCache();
+      all[ttsCacheKey(text, voice, rate)] = hex;
+      localStorage.setItem(TTS_CACHE_KEY, JSON.stringify(all));
+    } catch (e) { /* 超配额则忽略 */ }
+  }
+
+  function playHexAudio(hex) {
+    return new Promise((resolve) => {
+      try {
+        const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mp3' }));
+        if (mmAudio) { mmAudio.pause(); }
+        mmAudio = new Audio(url);
+        mmAudio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+        mmAudio.onerror = resolve;
+        mmAudio.play();
+      } catch (e) { resolve(); }
+    });
+  }
+
   // opts: { voice, rate } —— 沉浸对话按视角传入不同音色/语速
   async function speakMaybe(text, opts) {
     const key = getCfg('mm_voice');
     const o = opts || {};
-    if (!key) { speak(text, null, o.rate); return; } // 未配置 MiniMax 语音 → 降级浏览器 TTS
+    const voice = o.voice || 'audiobook_male_1';
+    const rate = o.rate || 0.95;
+
+    // 1. 先查 TTS 缓存
+    const cached = getCachedTTS(text, voice, rate);
+    if (cached) { stopSpeak(); await playHexAudio(cached); return; }
+
+    // 2. 未配置 MiniMax → 降级浏览器 TTS
+    if (!key) { speak(text, null, rate); return; }
+
+    // 3. 调 MiniMax T2A
     try {
       stopSpeak();
       const res = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
@@ -1182,20 +1241,27 @@ ${allText}
           text: text,
           stream: false,
           output_format: 'hex',
-          voice_setting: { voice_id: o.voice || 'audiobook_male_1', speed: o.rate || 0.95, vol: 1, pitch: 0 },
+          voice_setting: { voice_id: voice, speed: rate, vol: 1, pitch: 0 },
           audio_setting: { format: 'mp3', sample_rate: 32000, bitrate: 128000, channel: 1 }
         })
       });
-      if (!res.ok) { speak(text, null, o.rate); return; }
+      if (!res.ok) { speak(text, null, rate); return; }
       const data = await res.json();
       const hex = data && data.data && data.data.audio;
-      if (!hex) { speak(text, null, o.rate); return; }
-      const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
-      const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mp3' }));
-      if (mmAudio) { mmAudio.pause(); }
-      mmAudio = new Audio(url);
-      mmAudio.play();
-    } catch (e) { speak(text, null, o.rate); }
+      if (!hex) { speak(text, null, rate); return; }
+
+      // 4. 存入缓存 + 播放
+      saveCachedTTS(text, voice, rate, hex);
+      await playHexAudio(hex);
+    } catch (e) { speak(text, null, rate); }
+  }
+
+  // 带视觉高亮的朗读：高亮指定 DOM 元素，播放结束后恢复
+  async function speakNarr(text, el) {
+    if (!el) { await speakMaybe(text, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null); return; }
+    el.classList.add('speaking');
+    await speakMaybe(text, curPersona ? { voice: curPersona.voice, rate: curPersona.rate } : null);
+    el.classList.remove('speaking');
   }
 
   /* ============== 开发者面板 ============== */
