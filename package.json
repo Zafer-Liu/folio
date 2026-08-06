@@ -1,0 +1,12 @@
+{
+  "name": "dreamread",
+  "version": "1.0.0",
+  "description": "Dreamread · 让经典鲜活起来",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

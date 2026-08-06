@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dreamread · 让经典鲜活起来</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-paper: #faf6ed;
+    --bg-card: #ffffff;
+    --ink: #2a2a28;
+    --ink-2: #5f5e5a;
+    --ink-3: #8a8884;
+    --line: #e3decf;
+    --accent: #b95c3a;
+    --accent-soft: #f4d9c9;
+    --sea: #185fa5;
+    --sea-soft: #e6f1fb;
+    --gold: #c89a3a;
+    --shadow: 0 1px 0 rgba(0,0,0,0.04);
+    --serif: 'Source Serif 4', 'Noto Serif SC', Georgia, 'Songti SC', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg-paper); color: var(--ink); font-family: var(--serif); -webkit-font-smoothing: antialiased; }
+  body { min-height: 100vh; }
+
+  /* ===== Top Bar ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(250,246,237,0.92);
+    backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar .brand { font-weight: 600; font-size: 16px; letter-spacing: 0.04em; }
+  .topbar .brand small { color: var(--ink-3); font-weight: 400; margin-left: 8px; font-size: 12px; }
+  .topbar .nav { margin-left: auto; display: flex; gap: 6px; }
+  .nav-btn {
+    background: transparent; border: 1px solid transparent;
+    color: var(--ink-2); font-family: var(--sans); font-size: 13px;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.15s;
+  }
+  .nav-btn:hover { background: var(--bg-card); color: var(--ink); }
+  .nav-btn.active { background: var(--bg-card); border-color: var(--line); color: var(--ink); font-weight: 500; }
+
+  /* ===== Layout ===== */
+  main { max-width: 880px; margin: 0 auto; padding: 40px 24px 120px; }
+  .view { display: none; }
+  .view.active { display: block; animation: fade 0.35s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ===== Bookshelf ===== */
+  .shelf-intro { text-align: center; margin-bottom: 36px; }
+  .shelf-h1 { font-size: 40px; font-weight: 600; letter-spacing: 0.06em; }
+  .shelf-h1 .en { display: block; font-size: 14px; font-style: italic; color: var(--ink-3); font-weight: 400; letter-spacing: 0.14em; margin-top: 8px; }
+  .shelf-lede { max-width: 520px; margin: 18px auto 0; color: var(--ink-2); font-size: 15px; line-height: 1.9; }
+  .bookshelf {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 24px; margin: 0 auto 40px; max-width: 760px;
+    padding-bottom: 28px; border-bottom: 2px solid var(--line);
+  }
+  .shelf-book {
+    position: relative; cursor: pointer; transition: 0.2s;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .shelf-book .spine {
+    width: 100%; aspect-ratio: 3/4; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14); overflow: hidden;
+    display: flex; align-items: flex-end; justify-content: center;
+    position: relative; background-size: cover; background-position: center;
+  }
+  .shelf-book.ready:hover { transform: translateY(-6px); }
+  .shelf-book.ready:hover .spine { box-shadow: 0 16px 36px rgba(185,92,58,0.24); }
+  .shelf-book .spine .cap {
+    width: 100%; padding: 12px 10px 10px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.72));
+    color: #fff; text-align: center;
+  }
+  .shelf-book .spine .cap .t { font-size: 15px; font-weight: 600; letter-spacing: 0.04em; }
+  .shelf-book .spine .cap .a { font-size: 11px; opacity: 0.82; margin-top: 3px; }
+  /* 制作中占位 */
+  .shelf-book.wip { cursor: default; }
+  .shelf-book.wip .spine { background: linear-gradient(150deg, #efeada, #e2dcc9); }
+  .shelf-book.wip .spine .placeholder { color: var(--ink-3); font-size: 13px; text-align: center; padding: 0 12px; }
+  .shelf-book .wip-badge {
+    position: absolute; top: 10px; right: 10px; z-index: 2;
+    background: rgba(0,0,0,0.55); color: #fff; font-family: var(--sans);
+    font-size: 10px; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 999px;
+  }
+  /* 添加我的书 */
+  .shelf-book.add .spine {
+    background: transparent; border: 2px dashed var(--line);
+    box-shadow: none; align-items: center; color: var(--ink-3);
+    flex-direction: column; gap: 8px; transition: 0.2s;
+  }
+  .shelf-book.add:hover .spine { border-color: var(--accent); color: var(--accent); }
+  .shelf-book.add .spine .plus { font-size: 34px; font-weight: 300; line-height: 1; }
+  .shelf-book.add .spine .lbl { font-size: 12px; font-family: var(--sans); }
+  /* 无封面书脊 */
+  .shelf-book .spine .no-cover {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 0 14px; text-align: center; font-family: var(--serif); font-size: 18px;
+    color: #fff; background: linear-gradient(150deg, #b95c3a, #8a4026);
+  }
+  /* 悬停浮层：故事摘要 + 查看素材 */
+  .shelf-hover {
+    position: absolute; inset: 0; z-index: 3; border-radius: 6px;
+    background: rgba(24,18,14,0.86); color: #fff; padding: 16px 14px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    opacity: 0; pointer-events: none; transition: opacity 0.22s;
+  }
+  .shelf-book:hover .shelf-hover { opacity: 1; pointer-events: auto; }
+  .sh-sum { font-size: 12.5px; line-height: 1.72; overflow: hidden; cursor: pointer; }
+  .sh-wip { font-size: 11px; font-family: var(--sans); letter-spacing: 0.08em; color: #f0d9c8; text-align: center; }
+  .sh-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .sh-enter, .sh-assets {
+    align-self: stretch; padding: 8px 0; border: 0; border-radius: 6px;
+    font-family: var(--sans); font-size: 12.5px; cursor: pointer; transition: 0.15s;
+  }
+  .sh-enter { background: #fff; color: #1a140f; font-weight: 600; }
+  .sh-enter:hover { background: #f3ede1; }
+  .sh-assets { background: rgba(255,255,255,0.14); color: #fff; border: 1px solid rgba(255,255,255,0.35); }
+  .sh-assets:hover { background: rgba(255,255,255,0.24); }
+  .anchor-item .ph {
+    aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
+    background: #f0ece1; color: var(--ink-3); border-radius: 6px; font-size: 13px;
+  }
+  .add-hint { font-size: 13.5px; line-height: 1.8; color: var(--ink-2); margin-bottom: 14px; }
+
+  /* ===== Cover ===== */
+  .cover { text-align: center; padding-top: 24px; }
+  .cover .illu { width: 100%; max-width: 760px; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.08); margin-bottom: 32px; }
+  .cover h1 { font-family: var(--serif); font-size: 48px; font-weight: 600; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .cover h1 .en { display: block; font-size: 16px; font-style: italic; color: var(--ink-3); font-weight: 400; letter-spacing: 0.1em; margin-top: 10px; }
+  .cover .byline { color: var(--ink-2); font-size: 14px; margin-bottom: 28px; }
+  .cover .intro {
+    max-width: 620px; margin: 0 auto 36px;
+    color: var(--ink-2); font-size: 15px; line-height: 1.95;
+    text-align: justify;
+  }
+  .cover .charcard {
+    display: inline-flex; flex-direction: column; gap: 4px;
+    background: var(--bg-card); border: 1px solid var(--line);
+    padding: 16px 22px; border-radius: 10px; margin: 0 8px 16px;
+    text-align: left; min-width: 220px; vertical-align: top;
+  }
+  .charcard .name { font-weight: 600; color: var(--ink); font-size: 14px; }
+  .charcard .role { color: var(--accent); font-size: 11px; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .charcard .desc { color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+  .cover .chars { margin-bottom: 36px; }
+  .cover .start {
+    background: var(--ink); color: var(--bg-paper);
+    border: none; padding: 14px 36px; border-radius: 999px;
+    font-family: var(--serif); font-size: 16px; cursor: pointer;
+    letter-spacing: 0.06em; transition: 0.2s;
+  }
+  .cover .start:hover { background: var(--accent); transform: translateY(-1px); }
+  .mode-choose { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .cover .start.alt { background: var(--sea); }
+  .cover .start.alt:hover { background: #12508c; }
+
+  /* ===== Acts List ===== */
+  .acts-list h2 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .acts-list .lede { color: var(--ink-2); font-size: 13px; margin-bottom: 28px; }
+  .act-card {
+    display: grid; grid-template-columns: 220px 1fr; gap: 22px;
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px; cursor: pointer; transition: 0.2s;
+    align-items: center;
+  }
+  .act-card:hover { border-color: var(--accent); box-shadow: 0 6px 20px rgba(185,92,58,0.08); transform: translateY(-1px); }
+  .act-card .illu { width: 220px; height: 146px; object-fit: cover; border-radius: 8px; }
+  .act-card .meta .tag { color: var(--accent); font-size: 11px; letter-spacing: 0.14em; display: flex; align-items: center; gap: 8px; }
+  .act-badge { border-radius: 999px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.08em; font-weight: 600; }
+  .act-badge.done { background: #e8f5e9; color: #388e3c; }
+  .act-badge.cur  { background: var(--sea-soft); color: var(--sea); }
+  .act-card .meta h3 { font-size: 18px; font-weight: 600; margin: 4px 0; }
+  .act-card .meta .sub { color: var(--ink-2); font-size: 13px; margin-bottom: 8px; }
+  .act-card .meta .summary { color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+  @media (max-width: 600px) {
+    .act-card { grid-template-columns: 1fr; }
+    .act-card .illu { width: 100%; height: 180px; }
+  }
+
+  /* ===== Reading View ===== */
+  .reader .progress { display: flex; gap: 6px; margin-bottom: 24px; }
+  .reader .progress span { flex: 1; height: 3px; background: var(--line); border-radius: 2px; }
+  .reader .progress span.done { background: var(--accent); }
+  .reader .progress span.cur { background: var(--gold); }
+  .reader .titleblock { text-align: center; padding: 8px 0 24px; }
+  .reader .tag { color: var(--accent); font-size: 12px; letter-spacing: 0.2em; }
+  .reader h2 { font-size: 30px; font-weight: 600; margin: 6px 0 8px; }
+  .reader .sub { color: var(--ink-2); font-style: italic; font-size: 14px; }
+  .reader .illu { width: 100%; border-radius: 10px; margin: 8px 0 32px; box-shadow: 0 8px 28px rgba(0,0,0,0.08); }
+  .reader .summary {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; color: var(--ink);
+    font-size: 14px; line-height: 1.85; margin-bottom: 28px;
+  }
+  .para {
+    font-family: var(--serif); font-size: 17px; line-height: 2;
+    color: var(--ink); text-indent: 2em; text-align: justify;
+    margin-bottom: 14px; transition: background 0.2s, color 0.2s;
+    cursor: pointer; border-radius: 6px; position: relative;
+  }
+  .para:hover { background: var(--sea-soft); color: var(--sea); }
+  .para:hover::before { content: '▶'; position: absolute; left: 4px; top: 50%; transform: translateY(-50%); color: var(--sea); font-size: 9px; opacity: 0.5; text-indent: 0; }
+  .para.speaking { background: linear-gradient(90deg, var(--sea-soft), transparent 70%); padding: 6px 12px; color: var(--sea); text-indent: calc(2em - 12px); }
+  /* ===== Footnotes ===== */
+  .fn-ref {
+    display: inline-block; font-size: 10px; line-height: 1;
+    color: var(--sea); vertical-align: super; cursor: pointer;
+    background: var(--sea-soft); border-radius: 3px;
+    padding: 1px 3px; margin: 0 1px;
+    transition: background 0.15s;
+    font-style: normal; text-indent: 0;
+  }
+  .fn-ref:hover { background: #c4ddf5; }
+  .fn-tooltip {
+    position: fixed; z-index: 200;
+    background: var(--ink); color: var(--bg-paper);
+    font-family: var(--sans); font-size: 13px; line-height: 1.65;
+    padding: 10px 14px; border-radius: 10px;
+    max-width: 300px; box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .fn-tooltip.show { opacity: 1; }
+  /* default: tooltip is below trigger → arrow points UP */
+  .fn-tooltip::before {
+    content: ''; position: absolute; top: -6px; left: 16px;
+    border: 6px solid transparent; border-top: none;
+    border-bottom-color: var(--ink);
+  }
+  /* .above: tooltip is above trigger → arrow points DOWN */
+  .fn-tooltip.above::before {
+    top: auto; bottom: -6px;
+    border-top: 6px solid var(--ink); border-bottom: none;
+    border-bottom-color: transparent;
+  }
+
+  .quote-block {
+    text-align: center; font-style: italic; color: var(--ink);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 28px 16px; margin: 36px 0; font-size: 19px; line-height: 1.85;
+  }
+  .quote-block .who { display: block; margin-top: 12px; font-style: normal; color: var(--accent); font-size: 13px; letter-spacing: 0.14em; }
+
+  .read-tools {
+    position: sticky; bottom: 16px; margin: 24px auto 0; max-width: 480px;
+    display: flex; gap: 8px; justify-content: center;
+    background: rgba(255,255,255,0.95); border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    backdrop-filter: blur(8px);
+  }
+  .tool-btn {
+    background: transparent; border: none; padding: 8px 16px;
+    font-family: var(--sans); font-size: 13px; color: var(--ink-2);
+    cursor: pointer; border-radius: 999px; transition: 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tool-btn:hover { background: var(--bg-paper); color: var(--ink); }
+  .tool-btn.primary { background: var(--ink); color: var(--bg-paper); }
+  .tool-btn.primary:hover { background: var(--accent); }
+
+  /* ===== Choice Card ===== */
+  .choice-card {
+    background: var(--bg-card); border: 2px solid var(--accent);
+    border-radius: 14px; padding: 28px; margin: 36px 0;
+    box-shadow: 0 10px 32px rgba(185,92,58,0.12);
+  }
+  .choice-card .label { color: var(--accent); font-size: 12px; letter-spacing: 0.2em; margin-bottom: 8px; }
+  .choice-card h3 { font-size: 19px; font-weight: 600; margin-bottom: 20px; line-height: 1.6; }
+  .choice-opt {
+    display: block; width: 100%; text-align: left;
+    background: var(--bg-paper); border: 1px solid var(--line);
+    padding: 14px 18px; margin-bottom: 10px; border-radius: 10px;
+    font-family: var(--serif); font-size: 15px; color: var(--ink);
+    cursor: pointer; transition: 0.15s;
+  }
+  .choice-opt:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .choice-opt .feel { float: right; font-size: 11px; color: var(--accent); letter-spacing: 0.1em; }
+  .choice-feedback {
+    margin-top: 16px; padding: 16px; border-radius: 10px;
+    background: var(--sea-soft); color: var(--ink); font-size: 14px; line-height: 1.85;
+    display: none;
+  }
+  .choice-feedback.show { display: block; animation: fade 0.4s ease; }
+
+  /* ===== Chat ===== */
+  .chat-wrap { max-width: 720px; margin: 0 auto; }
+  .chat-header { text-align: center; padding: 24px 0 32px; }
+  .chat-header .portrait {
+    width: 96px; height: 96px; border-radius: 50%; object-fit: cover;
+    object-position: 25% 20%;
+    margin-bottom: 14px; border: 2px solid var(--accent);
+    box-shadow: 0 4px 16px rgba(185,92,58,0.18);
+  }
+  .chat-header h2 { font-size: 26px; font-weight: 600; }
+  .chat-header .role { color: var(--ink-2); font-size: 13px; margin-bottom: 12px; }
+  .chat-header .desc { color: var(--ink-2); font-size: 14px; line-height: 1.8; max-width: 520px; margin: 0 auto; }
+  .chat-mode {
+    display: inline-flex; gap: 0; background: var(--bg-card);
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px;
+    margin-bottom: 18px; font-size: 12px;
+  }
+  .chat-mode button {
+    background: transparent; border: none; padding: 6px 14px;
+    border-radius: 999px; cursor: pointer; color: var(--ink-2);
+    font-family: var(--sans);
+  }
+  .chat-mode button.active { background: var(--ink); color: var(--bg-paper); }
+
+  .chat-log { display: flex; flex-direction: column; gap: 14px; margin: 16px 0 24px; min-height: 280px; }
+  .msg { max-width: 78%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.75; }
+  .msg.user {
+    align-self: flex-end; background: var(--ink); color: var(--bg-paper);
+    border-bottom-right-radius: 4px;
+  }
+  .msg.bot {
+    align-self: flex-start; background: var(--bg-card); color: var(--ink);
+    border: 1px solid var(--line); border-bottom-left-radius: 4px;
+  }
+  .msg.bot .src { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--ink-3); font-style: italic; }
+
+  .chat-input {
+    display: flex; gap: 8px; background: var(--bg-card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 8px;
+    align-items: center;
+  }
+  .chat-input input {
+    flex: 1; border: none; outline: none; padding: 8px 12px;
+    font-family: var(--serif); font-size: 14px; background: transparent; color: var(--ink);
+  }
+  .chat-input button {
+    background: var(--ink); color: var(--bg-paper); border: none;
+    padding: 8px 18px; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+    cursor: pointer;
+  }
+  .chat-input button:hover { background: var(--accent); }
+  .mute-btn {
+    background: transparent !important; color: var(--ink-3) !important;
+    padding: 4px 8px !important; font-size: 16px !important;
+    border-radius: 6px !important; flex-shrink: 0;
+  }
+  .mute-btn:hover { background: var(--bg-paper) !important; color: var(--ink) !important; }
+  .chat-suggest { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 24px; }
+  .chat-suggest button {
+    background: var(--bg-card); border: 1px solid var(--line);
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; color: var(--ink-2);
+    cursor: pointer; font-family: var(--sans);
+  }
+  .chat-suggest button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* 预设话题卡 */
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 20px; }
+  .preset-card {
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; cursor: pointer; transition: 0.15s; font-family: var(--serif);
+    font-size: 14px; color: var(--ink);
+  }
+  .preset-card:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); }
+  .preset-card .ic { font-size: 20px; flex-shrink: 0; }
+  .preset-title { font-family: var(--sans); font-size: 12px; color: var(--ink-3); letter-spacing: 0.08em; margin: 4px 0 2px; }
+  /* bot 消息内插图 */
+  .msg.bot .dialog-img { width: 100%; border-radius: 10px; margin-bottom: 10px; display: block; }
+  .msg.bot .img-skel { width: 100%; aspect-ratio: 16/10; border-radius: 10px; margin-bottom: 10px; background: linear-gradient(90deg,#eee9db,#f5f1e6,#eee9db); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
+  @keyframes shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+
+  /* ===== 沉浸对话：视角选择 ===== */
+  .persona-head { text-align: center; margin: 12px 0 28px; }
+  .persona-head h2 { font-size: 26px; font-weight: 600; margin-bottom: 8px; }
+  .persona-head p { color: var(--ink-2); font-size: 14px; line-height: 1.8; max-width: 460px; margin: 0 auto; }
+  .persona-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; max-width: 640px; margin: 0 auto; }
+  .persona-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 18px; text-align: center; cursor: pointer; transition: 0.18s;
+  }
+  .persona-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 28px rgba(185,92,58,0.12); }
+  .persona-card .pic { font-size: 34px; margin-bottom: 10px; }
+  .persona-card .nm { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .persona-card .rl { font-family: var(--sans); font-size: 12px; color: var(--accent); letter-spacing: 0.08em; margin-bottom: 8px; }
+  .persona-card .ds { font-size: 13px; color: var(--ink-2); line-height: 1.7; }
+
+  /* ===== 沉浸对话：对话式阅读 ===== */
+  .story-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .story-persona { font-family: var(--sans); font-size: 13px; color: var(--ink-2); }
+  .story-persona b { color: var(--accent); }
+  .story-bar .tool-btn { margin-left: auto; }
+  .story-bar .tool-btn + .tool-btn { margin-left: 0; }
+  .msg.narr { align-self: stretch; max-width: 100%; background: transparent; border: none; color: var(--ink); font-size: 15px; line-height: 2; text-indent: 2em; padding: 6px 2px; }
+  .story-choices { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 18px; }
+  .story-opt {
+    display: block; width: 100%; text-align: left; background: var(--bg-card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
+    font-family: var(--serif); font-size: 15px; color: var(--ink); cursor: pointer; transition: 0.15s;
+  }
+  .story-opt:hover { border-color: var(--accent); background: var(--accent-soft); transform: translateX(3px); }
+  .story-opt .no { color: var(--accent); font-weight: 600; margin-right: 10px; }
+  .story-opt[disabled] { opacity: 0.5; cursor: default; transform: none; }
+
+  /* ===== About ===== */
+  .about h2 { font-size: 24px; font-weight: 600; margin-bottom: 12px; }
+  .about h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: var(--accent); }
+  .about p, .about li { color: var(--ink-2); font-size: 14px; line-height: 1.85; }
+  .about ul { padding-left: 22px; margin: 8px 0 16px; }
+  .about code { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; }
+  .about .arch {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; margin: 12px 0; font-size: 13px;
+  }
+  .about .arch .step { padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .about .arch .step:last-child { border-bottom: none; }
+  .about .arch .step b { color: var(--accent); font-weight: 600; }
+
+  /* ===== Account ===== */
+  .account { max-width: 520px; margin: 0 auto; }
+  .account h2 { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+  .account .acct-sub { color: var(--ink-2); font-size: 13.5px; line-height: 1.8; margin-bottom: 22px; }
+  .account .acct-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px; padding: 22px;
+  }
+  .account .acct-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .account .acct-tab {
+    flex: 1; padding: 9px 0; border: 1px solid var(--line); border-radius: 8px; background: transparent;
+    color: var(--ink-2); font-family: var(--sans); font-size: 13px; cursor: pointer; transition: 0.15s;
+  }
+  .account .acct-tab.active { background: var(--ink); color: var(--bg-paper); border-color: var(--ink); }
+  .account .acct-row { margin-bottom: 14px; }
+  .account .acct-row label { display: block; font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .account .acct-row input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg-paper); color: var(--ink); font-family: var(--sans); font-size: 14px;
+  }
+  .account .acct-err { color: var(--accent); font-size: 12.5px; min-height: 16px; margin: 4px 0 10px; }
+  .account .acct-ok { color: #3a7d44; font-size: 12.5px; min-height: 16px; margin: 4px 0 10px; }
+  .account .acct-actions { display: flex; gap: 10px; align-items: center; }
+  .account .acct-hi { font-size: 15px; margin-bottom: 4px; }
+  .account .acct-hi b { color: var(--accent); }
+  .account .acct-badge {
+    display: inline-block; font-family: var(--sans); font-size: 11px; letter-spacing: 0.06em;
+    padding: 3px 10px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+  .account .acct-badge.on { background: #e7f3ea; color: #3a7d44; }
+  .account .acct-badge.off { background: #f0ece1; color: var(--ink-3); }
+  .account .acct-divider { border: none; border-top: 1px solid var(--line); margin: 20px 0; }
+  .account .acct-glabel { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.06em; margin-bottom: 10px; }
+
+  .setting-row { display: flex; gap: 8px; align-items: center; margin: 8px 0 16px; }
+  .setting-row label { min-width: 100px; font-size: 13px; color: var(--ink-2); }
+  .setting-row input {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--line);
+    border-radius: 8px; font-family: var(--sans); font-size: 13px;
+    background: var(--bg-card); color: var(--ink);
+  }
+
+  /* ===== Dev Panel / Modal ===== */
+  .dev-mask {
+    display: none; position: fixed; inset: 0; z-index: 300;
+    background: rgba(20,18,14,0.42); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .dev-mask.show { display: flex; animation: fade 0.2s ease; }
+  .dev-panel {
+    background: var(--bg-paper); border: 1px solid var(--line);
+    border-radius: 16px; padding: 26px; width: 100%; max-width: 480px;
+    max-height: 86vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+  }
+  .dev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .dev-head h3 { font-size: 19px; font-weight: 600; }
+  .dev-close { background: transparent; border: none; font-size: 18px; color: var(--ink-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .dev-close:hover { background: var(--bg-card); color: var(--ink); }
+  .dev-note { font-family: var(--sans); font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 18px; }
+  .dev-group { margin-bottom: 18px; }
+  .dev-glabel { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.06em; margin-bottom: 8px; }
+  .dev-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .dev-saved { font-family: var(--sans); font-size: 12px; color: #388e3c; }
+
+  /* 上传书籍流程 */
+  .add-code input { width: 100%; text-align: center; font-size: 22px; letter-spacing: 0.4em; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-card); color: var(--ink); font-family: var(--sans); }
+  .add-hint { font-family: var(--sans); font-size: 13px; color: var(--ink-2); line-height: 1.7; margin: 4px 0 18px; }
+  .add-err { color: var(--accent); font-size: 12px; font-family: var(--sans); min-height: 16px; margin-top: 8px; }
+  .drop-zone {
+    border: 2px dashed var(--line); border-radius: 12px; padding: 36px 18px;
+    text-align: center; color: var(--ink-3); font-family: var(--sans); font-size: 14px;
+    cursor: pointer; transition: 0.15s; margin: 6px 0 14px;
+  }
+  .drop-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-card); }
+  .gen-preview { font-family: var(--sans); }
+  .gen-preview .pv-cover { width: 100%; border-radius: 10px; margin-bottom: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  .gen-preview h4 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+  .gen-preview .pv-author { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+  .gen-preview .pv-block { font-size: 13px; line-height: 1.8; color: var(--ink-2); margin-bottom: 12px; }
+  .gen-status { font-family: var(--sans); font-size: 13px; color: var(--sea); display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 锚点资产网格 */
+  .anchor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .anchor-item { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
+  .anchor-item .cap { font-family: var(--sans); font-size: 11px; color: var(--ink-2); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .anchor-item img { width: 100%; display: block; }
+  .anchor-item .ph { aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; color: var(--ink-3); font-family: var(--sans); font-size: 12px; }
+  .anchor-item .ph .spinner { margin-right: 6px; }
+
+  /* ===== Mobile ===== */
+  @media (max-width: 480px) {
+    main { padding: 24px 16px 100px; }
+
+    /* topbar */
+    .topbar { padding: 10px 12px; gap: 8px; }
+    .topbar .brand { font-size: 14px; }
+    .topbar .brand small { display: none; }
+    .nav-btn { padding: 5px 9px; font-size: 12px; }
+
+    /* cover */
+    .cover h1 { font-size: 32px; }
+    .cover .charcard { min-width: calc(100% - 0px); display: flex; width: 100%; margin: 0 0 10px; }
+    .cover .chars { display: flex; flex-direction: column; }
+    .cover .start { width: 100%; text-align: center; padding: 14px; }
+
+    /* reader */
+    .reader h2 { font-size: 22px; }
+    .para { font-size: 15px; line-height: 1.9; }
+    .quote-block { font-size: 16px; padding: 20px 12px; }
+    .choice-card { padding: 20px 16px; }
+    .choice-card h3 { font-size: 16px; }
+    .choice-opt { font-size: 14px; padding: 12px 14px; }
+
+    /* read-tools */
+    .read-tools { left: 12px; right: 12px; max-width: none; margin: 16px 0 0; padding: 6px; gap: 4px; }
+    .tool-btn { padding: 8px 10px; font-size: 12px; }
+
+    /* chat */
+    .chat-header .portrait { width: 72px; height: 72px; }
+    .chat-header h2 { font-size: 20px; }
+    .chat-header .desc { font-size: 13px; }
+    .msg { max-width: 90%; font-size: 13px; }
+    .chat-suggest button { font-size: 11px; padding: 5px 10px; }
+    .setting-row { flex-wrap: wrap; }
+    .setting-row label { min-width: 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Dreamread <small>· 让经典鲜活起来</small></div>
+  <div class="nav">
+    <button class="nav-btn" data-view="cover">导航页</button>
+    <button class="nav-btn" data-view="acts">传统阅读</button>
+    <button class="nav-btn" data-view="chat">沉浸对话</button>
+    <button class="nav-btn" data-view="about">关于</button>
+    <button class="nav-btn" data-view="account">账户</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- ========== COVER (书架) ========== -->
+  <section id="view-cover" class="view active">
+    <div class="shelf-intro">
+      <h1 class="shelf-h1" id="shelf-h1">鲜活的书架<span class="en" id="shelf-en">A Living Bookshelf</span></h1>
+      <p class="shelf-lede" id="shelf-lede">选一本书，让它开口说话。经典不再只是文字，而是可读、可听、可对话的世界。</p>
+    </div>
+    <div class="bookshelf" id="bookshelf"></div>
+
+    <!-- 老人与海详情（点击书架后展开，仅导航页模式显示模式选择） -->
+    <div class="cover" id="book-detail" style="display:none;">
+      <img class="illu" src="assets/act1.png" alt="老人与孩子">
+      <h1>老人与海<span class="en">The Old Man and the Sea</span></h1>
+      <div class="byline">〔美〕欧内斯特·海明威　·　吴劳 译</div>
+      <p class="intro" id="book-intro"></p>
+      <div class="chars" id="book-chars"></div>
+      <div class="mode-choose">
+        <button class="start" onclick="app.enterRead()">📖 传统阅读</button>
+        <button class="start alt" onclick="app.enterChat()">💬 沉浸对话</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ACTS LIST ========== -->
+  <section id="view-acts" class="view">
+    <div class="acts-list">
+      <h2>幕次</h2>
+      <div class="lede">五幕叙事 · 配图配音 · 随时和圣地亚哥对话</div>
+      <div id="acts-grid"></div>
+    </div>
+  </section>
+
+  <!-- ========== READING ========== -->
+  <section id="view-reader" class="view">
+    <div class="reader">
+      <div class="progress" id="progress"></div>
+      <div class="titleblock">
+        <div class="tag" id="r-tag"></div>
+        <h2 id="r-title"></h2>
+        <div class="sub" id="r-sub"></div>
+      </div>
+      <img class="illu" id="r-illu" alt="">
+      <div class="summary" id="r-summary"></div>
+      <div id="r-body"></div>
+      <div id="r-quote" class="quote-block" style="display:none;"></div>
+      <div id="r-choice"></div>
+      <div id="r-next" style="text-align:center; margin-top: 40px;"></div>
+    </div>
+
+    <!-- 悬浮朗读工具栏 -->
+    <div class="read-tools" id="read-tools">
+      <button class="tool-btn" id="btn-speak-act" onclick="app.speakAct()">🔊 朗读本幕</button>
+      <button class="tool-btn" id="btn-stop-speak" onclick="app.stopSpeak()" style="display:none;">⏹ 停止</button>
+      <button class="tool-btn" onclick="app.go('chat')">💬 和圣地亚哥对话</button>
+    </div>
+  </section>
+
+  <!-- ========== 沉浸对话（对话式阅读） ========== -->
+  <section id="view-chat" class="view">
+    <div class="chat-wrap">
+      <!-- 第一步：选择视角 -->
+      <div id="persona-select">
+        <div class="persona-head">
+          <h2>沉浸对话 · 选择你的视角</h2>
+          <p>以谁的眼睛进入这个故事？你的每一次选择，都会推动情节走向。</p>
+        </div>
+        <div class="persona-grid" id="persona-grid"></div>
+      </div>
+
+      <!-- 第二步：对话式阅读 -->
+      <div id="story-stage" style="display:none;">
+        <div class="story-bar">
+          <span class="story-persona" id="story-persona"></span>
+          <button class="tool-btn" id="btn-chat-mute" onclick="app.toggleChatMute()" title="点击静音">🔊</button>
+          <button class="tool-btn" onclick="app.restartStory()">↺ 换视角</button>
+        </div>
+        <div class="chat-log" id="chat-log"></div>
+        <div class="story-choices" id="story-choices"></div>
+        <div class="chat-input">
+          <input id="chat-text" placeholder="或者，写下你想说 / 想做的…" autocomplete="off">
+          <button onclick="app.sendMsg()">发送</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ABOUT ========== -->
+  <section id="view-about" class="view">
+    <div class="about">
+      <h2>关于这本书的「鲜活化」</h2>
+      <p>这不是又一本电子书，而是一个 <b>AI Agent 编排的可互动动画书</b>。我们用海明威的中篇小说《老人与海》做 MVP，把一个具体的"读经典名著"小场景做透。</p>
+
+      <h3>核心问题</h3>
+      <p>经典文学在年轻一代里被遗忘，不是因为文字不好，而是<b>阅读方式太单薄</b>。CastReader、NotebookLM 等 AI 工具能"听书"或"看视频"，但读者仍然是被动接受者。</p>
+
+      <h3>我们的差异化</h3>
+      <ul>
+        <li><b>可对话</b>：随时停下和圣地亚哥聊——他用原文说话，不是空泛的 LLM 扮演。</li>
+        <li><b>可参与</b>：两个关键抉择点，读者不再是旁观者。</li>
+        <li><b>可感</b>：每幕一张电影感插画 + Web Speech API 朗读 + 名言高亮。</li>
+        <li><b>经典公版</b>：没有版权风险，可任意扩展到《百年孤独》《卡拉马佐夫兄弟》等。</li>
+      </ul>
+
+      <h3>Agent 流程编排</h3>
+      <div class="arch">
+        <div class="step"><b>① 书籍解析层</b>　docx / txt → LLM 生成书名 / 简介 / 锚点 / 章节摘要</div>
+        <div class="step"><b>② 场景生成层</b>　锚点人物+场景 → MiniMax ImageGen 生成一致插画</div>
+        <div class="step"><b>③ 角色 Agent</b>　人设 System Prompt + 5 幕原文检索(RAG) → 回复</div>
+        <div class="step"><b>④ 互动编排</b>　预设话题 + 决策点 → 引导用户回到叙事</div>
+        <div class="step"><b>⑤ 朗读 Agent</b>　MiniMax T2A 语音（未配置时降级 Web Speech）</div>
+      </div>
+
+      <h3>技术栈</h3>
+      <p>纯前端：HTML + CSS + 原生 JS，无构建步骤。封面是一个<b>书架</b>，《老人与海》为可读样书，其余为"制作中"占位。对话采用<b>预设话题 + 自定义输入</b>：预设自带提前生成的插图；自定义输入在配置 MiniMax 图片密钥后<b>实时生成插图</b>，并用书籍锚点保证人物 / 场景前后一致。</p>
+      <p>按 <code>Ctrl+Shift+D</code> 打开<b>开发者模式</b>，配置 MiniMax 图片 / 语音密钥与 LLM（OpenAI 兼容）。所有密钥仅存本地浏览器。想上传自己的书（docx / txt）生成锚点与第一章预览，需输入<b>体验码</b>。</p>
+
+      <h3>比赛信息</h3>
+      <p>参赛于 <b>Eazo · Global Youth AI Agent 黑客松</b> · 命题一「让一本书鲜活起来」</p>
+    </div>
+  </section>
+
+  <!-- ========== 账户（注册 / 登录 / 个人信息） ========== -->
+  <section id="view-account" class="view">
+    <div class="account" id="account-body"></div>
+  </section>
+
+</main>
+
+<!-- ========== 开发者面板 (Ctrl+Shift+D) ========== -->
+<div class="dev-mask" id="dev-mask" onclick="app.closeDev(event)">
+  <div class="dev-panel" onclick="event.stopPropagation()">
+    <div class="dev-head">
+      <h3>⚙ 开发者模式</h3>
+      <button class="dev-close" onclick="app.closeDev()">✕</button>
+    </div>
+    <p class="dev-note">配置 MiniMax 与 LLM 密钥。仅保存在本地浏览器（localStorage），不上传。</p>
+    <div class="dev-group">
+      <div class="dev-glabel">MiniMax · 图片生成</div>
+      <div class="setting-row"><label>Image Key</label><input id="cfg-mm-img" type="password" placeholder="MiniMax 图片 API Key"></div>
+    </div>
+    <div class="dev-group">
+      <div class="dev-glabel">MiniMax · 语音合成</div>
+      <div class="setting-row"><label>Voice Key</label><input id="cfg-mm-voice" type="password" placeholder="MiniMax 语音 API Key"></div>
+    </div>
+    <div class="dev-group">
+      <div class="dev-glabel">LLM · 角色扮演 / 书籍解析</div>
+      <div class="setting-row"><label>BaseURL</label><input id="cfg-llm-base" placeholder="https://api.openai.com/v1"></div>
+      <div class="setting-row"><label>API Key</label><input id="cfg-llm-key" type="password" placeholder="sk-..."></div>
+      <div class="setting-row"><label>Model</label><input id="cfg-llm-model" placeholder="gpt-4o-mini"></div>
+    </div>
+    <div class="dev-actions">
+      <button class="tool-btn primary" onclick="app.saveDev()">保存配置</button>
+      <span id="dev-saved" class="dev-saved"></span>
+    </div>
+
+    <div class="dev-group" style="margin-top:22px;border-top:1px solid var(--line);padding-top:18px;">
+      <div class="dev-glabel">锚点资产 · 保证插图前后一致</div>
+      <p class="dev-note" style="margin-bottom:12px;">基于书籍锚点，预生成人物三视图与场景背景图，用作后续插图的视觉基准。需先配置 MiniMax 图片密钥。</p>
+      <div class="setting-row"><label>书籍</label><select id="anchor-book"></select></div>
+      <div class="dev-actions" style="margin-bottom:12px;">
+        <button class="tool-btn primary" onclick="app.genAnchors()">生成锚点资产</button>
+        <span id="anchor-status" class="dev-saved"></span>
+      </div>
+      <div class="anchor-grid" id="anchor-grid"></div>
+    </div>
+
+    <div class="dev-group" style="margin-top:22px;border-top:1px solid var(--line);padding-top:18px;">
+      <div class="dev-glabel">剧情缓存 · 相同选项不再重复生成</div>
+      <p class="dev-note" style="margin-bottom:12px;">沉浸对话每一轮的叙述、场景与插图会按「视角 + 选项路径」自动缓存，下次走相同选项直接秒出、零 API 调用。清除后将重新生成。</p>
+      <div class="dev-actions">
+        <button class="tool-btn" onclick="app.clearStoryCache()">清除剧情缓存</button>
+        <span id="cache-status" class="dev-saved"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 体验码 / 上传书籍弹窗 ========== -->
+<div class="dev-mask" id="add-mask" onclick="app.closeAdd(event)">
+  <div class="dev-panel" onclick="event.stopPropagation()">
+    <div class="dev-head">
+      <h3>＋ 添加我的书</h3>
+      <button class="dev-close" onclick="app.closeAdd()">✕</button>
+    </div>
+    <div id="add-body"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="data/book-data.js"></script>
+<script src="data/footnotes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
