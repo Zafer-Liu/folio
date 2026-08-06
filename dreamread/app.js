@@ -359,13 +359,17 @@
     // 正文段落
     const body = $('#r-body');
     body.innerHTML = a.paragraphs.map((p, i) =>
-      `<p class="para" data-i="${i}" title="点击从此处开始朗读">${renderFnRefs(p)}</p>`
+      `<p class="para" data-i="${i}" title="点击开始朗读，再次点击停止">${renderFnRefs(p)}</p>`
     ).join('');
     body.onclick = e => {
       const fn = e.target.closest('.fn-ref');
       if (fn) { e.stopPropagation(); showFn(fn, fn.dataset.fn); return; }
       const para = e.target.closest('.para');
-      if (para) speakFromPara(parseInt(para.dataset.i, 10));
+      if (!para) return;
+      const idx = parseInt(para.dataset.i, 10);
+      // 当正在朗读且点击当前高亮段 → 停止；否则从该段开始朗读
+      if (isSpeaking && para.classList.contains('speaking')) { stopSpeak(); return; }
+      speakFromPara(idx);
     };
 
     // 名言
@@ -449,56 +453,116 @@
   function setToolbarState(speaking) {
     const btnSpeak = $('#btn-speak-act');
     const btnStop  = $('#btn-stop-speak');
-    if (btnSpeak) btnSpeak.style.display = speaking ? 'none' : '';
+    if (btnSpeak) {
+      btnSpeak.style.display = speaking ? 'none' : '';
+      if (speaking) {
+        btnSpeak.textContent = '🔊 朗读本幕';
+      }
+    }
     if (btnStop)  btnStop.style.display  = speaking ? '' : 'none';
   }
 
   function stopSpeak() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    // 同时停止 MiniMax 音频（此前只停了浏览器 TTS，切视图/静音时 MiniMax 仍在播）
     if (mmAudio) { try { mmAudio.pause(); mmAudio.currentTime = 0; } catch (e) {} mmAudio = null; }
+    // 标记停止，避免异步链式回调继续推进到下一段
+    _speakChainStopped = true;
     isSpeaking = false;
     utterance = null;
     $$('.para.speaking').forEach(p => p.classList.remove('speaking'));
     setToolbarState(false);
   }
 
+  // 当前朗读链的停止信标：为 true 时链式回调不应继续
+  let _speakChainStopped = false;
+
   function speakAct() {
+    // 如果正在朗读，点击喇叭 = 停止
+    if (isSpeaking) { stopSpeak(); return; }
     const a = BOOK.acts[curAct];
     speakFromPara(0, a.summary + '。');
   }
 
-  /* 逐段链式朗读：每读完一段高亮下一段 */
-  function speakFromPara(startIdx, prefix) {
+  /* 逐段链式朗读：使用 MiniMax TTS（降级浏览器语音），每读完一段自动推进 */
+  async function speakFromPara(startIdx, prefix) {
     stopSpeak();
+    _speakChainStopped = false;
+    setToolbarState(true);
     const a = BOOK.acts[curAct];
     const paras = $$('#r-body .para');
-    let idx = startIdx;
 
-    function readNext() {
+    async function readNext(idx) {
+      if (_speakChainStopped) return;
       if (idx >= a.paragraphs.length) {
         setToolbarState(false);
+        isSpeaking = false;
         return;
       }
+      const text = (idx === startIdx && prefix ? prefix : '') + a.paragraphs[idx];
+
+      // 高亮当前段
       $$('.para.speaking').forEach(p => p.classList.remove('speaking'));
       const el = paras[idx];
       if (el) {
         el.classList.add('speaking');
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      const text = (idx === startIdx && prefix ? prefix : '') + a.paragraphs[idx];
-      idx++;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'zh-CN'; u.rate = 0.95; u.pitch = 0.95;
-      const v = getVoice(); if (v) u.voice = v;
-      u.onend = readNext;
-      utterance = u;
+
       isSpeaking = true;
-      window.speechSynthesis.speak(u);
+
+      // 检查是否被提前停止（例：stopSpeak 在 async 间隙调用）
+      if (_speakChainStopped) { isSpeaking = false; return; }
+
+      await speakAsync(text, { rate: 0.95 });
+      readNext(idx + 1);
     }
 
-    setToolbarState(true);
-    readNext();
+    readNext(startIdx);
+  }
+
+  /* 返回一个在音频播放完成时 resolve 的 Promise */
+  function speakAsync(text, opts) {
+    return new Promise((resolve) => {
+      const key = getCfg('mm_voice');
+      const o = opts || {};
+      if (!key) {
+        // 降级浏览器 TTS
+        if (!('speechSynthesis' in window)) { resolve(); return; }
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = o.rate || 0.95; u.pitch = 0.95;
+        const v = getVoice(); if (v) u.voice = v;
+        u.onend = resolve;
+        u.onerror = resolve;
+        utterance = u;
+        window.speechSynthesis.speak(u);
+        return;
+      }
+      // MiniMax TTS
+      fetch('https://api.minimaxi.com/v1/t2a_v2', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'speech-02-turbo',
+          text: text,
+          stream: false,
+          output_format: 'hex',
+          voice_setting: { voice_id: o.voice || 'audiobook_male_1', speed: o.rate || 0.95, vol: 1, pitch: 0 },
+          audio_setting: { format: 'mp3', sample_rate: 32000, bitrate: 128000, channel: 1 }
+        })
+      }).then(async (res) => {
+        if (!res.ok || _speakChainStopped) { resolve(); return; }
+        const data = await res.json();
+        const hex = data && data.data && data.data.audio;
+        if (!hex || _speakChainStopped) { resolve(); return; }
+        const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h, 16)));
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mp3' }));
+        if (mmAudio) { mmAudio.pause(); }
+        mmAudio = new Audio(url);
+        mmAudio.onended = () => { URL.revokeObjectURL(url); resolve(); };
+        mmAudio.onerror = resolve;
+        mmAudio.play();
+      }).catch(() => resolve());
+    });
   }
 
   /* ============== 沉浸对话：对话式阅读引擎 ============== */
