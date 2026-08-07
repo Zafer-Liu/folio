@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>活页 Folio · 让经典开口说话</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,22 +37,69 @@
     padding: 14px 24px;
     display: flex; align-items: center; gap: 16px;
   }
-  .topbar .brand { font-weight: 600; font-size: 16px; letter-spacing: 0.04em; }
+  .topbar .brand { font-weight: 600; font-size: 16px; letter-spacing: 0.04em; white-space: nowrap; }
   .topbar .brand small { color: var(--ink-3); font-weight: 400; margin-left: 8px; font-size: 12px; }
-  .topbar .nav { margin-left: auto; display: flex; gap: 6px; }
+  .topbar .nav { margin-left: auto; display: flex; gap: 6px; align-items: center; }
   .nav-btn {
     background: transparent; border: 1px solid transparent;
     color: var(--ink-2); font-family: var(--sans); font-size: 13px;
     padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.15s;
+    white-space: nowrap;
   }
   .nav-btn:hover { background: var(--bg-card); color: var(--ink); }
   .nav-btn.active { background: var(--bg-card); border-color: var(--line); color: var(--ink); font-weight: 500; }
+
+  /* hamburger toggle (hidden on desktop) */
+  .hamburger { display: none; background: transparent; border: none; font-size: 22px; color: var(--ink-2); cursor: pointer; padding: 6px 8px; border-radius: 6px; line-height: 1; }
+  .hamburger:hover { background: var(--bg-card); color: var(--ink); }
+  .nav-mobile-mask { display: none; position: fixed; inset: 0; z-index: 49; background: rgba(20,18,14,0.35); }
+  .nav-mobile-mask.show { display: block; }
+  .nav-drawer {
+    display: none; position: fixed; top: 0; right: 0; z-index: 51;
+    width: 260px; height: 100dvh; background: var(--bg-paper);
+    border-left: 1px solid var(--line); padding: 20px 18px 100px;
+    flex-direction: column; gap: 6px;
+    box-shadow: -8px 0 28px rgba(0,0,0,0.12);
+    overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.22s ease-out;
+  }
+  .nav-drawer.show { transform: translateX(0); }
+  .nav-drawer .nav-drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .nav-drawer .nav-drawer-head span { font-weight: 600; font-size: 15px; letter-spacing: 0.04em; }
+  .nav-drawer .nav-close { background: transparent; border: none; font-size: 18px; color: var(--ink-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+  .nav-drawer .nav-close:hover { background: var(--bg-card); color: var(--ink); }
+  .nav-drawer .nav-btn { text-align: left; font-size: 14px; padding: 10px 14px; width: 100%; }
+  .nav-drawer .nav-btn.active { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
 
   /* ===== Layout ===== */
   main { max-width: 880px; margin: 0 auto; padding: 40px 24px 120px; }
   .view { display: none; }
   .view.active { display: block; animation: fade 0.35s ease; }
   @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ===== Touch/pointer adaptation ===== */
+  @media (hover: none) {
+    /* No hover states on touch devices — use active instead */
+    .shelf-book.ready:hover { transform: none; }
+    .shelf-book.ready:hover .spine { box-shadow: 0 8px 24px rgba(0,0,0,0.14); }
+    .shelf-book.ready:active { transform: scale(0.96); }
+    .act-card:hover { border-color: var(--line); box-shadow: none; transform: none; }
+    .act-card:active { border-color: var(--accent); transform: scale(0.98); }
+    .persona-card:hover { border-color: var(--line); transform: none; box-shadow: none; }
+    .persona-card:active { border-color: var(--accent); transform: scale(0.96); }
+    .story-opt:hover { border-color: var(--line); background: var(--bg-card); transform: none; }
+    .story-opt:active { border-color: var(--accent); background: var(--accent-soft); }
+    .preset-card:hover { border-color: var(--line); background: var(--bg-card); transform: none; }
+    .preset-card:active { border-color: var(--accent); background: var(--accent-soft); }
+  }
+
+  @media (pointer: coarse) {
+    /* Larger touch targets for coarse pointers (touch screens) */
+    .nav-btn { min-height: 44px; display: inline-flex; align-items: center; }
+    .tool-btn { min-height: 44px; display: inline-flex; align-items: center; }
+    .sh-enter, .sh-assets { min-height: 40px; }
+    .shelf-book { cursor: pointer; }
+  }
 
   /* ===== Bookshelf ===== */
   .shelf-intro { text-align: center; margin-bottom: 36px; }
@@ -63,6 +110,10 @@
     display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 24px; margin: 0 auto 40px; max-width: 760px;
     padding-bottom: 28px; border-bottom: 2px solid var(--line);
+  }
+  /* Limit columns to avoid scattered single books on wide screens */
+  @media (min-width: 900px) {
+    .bookshelf { grid-template-columns: repeat(4, 1fr); }
   }
   .shelf-book {
     position: relative; cursor: pointer; transition: 0.2s;
@@ -76,6 +127,8 @@
   }
   .shelf-book.ready:hover { transform: translateY(-6px); }
   .shelf-book.ready:hover .spine { box-shadow: 0 16px 36px rgba(185,92,58,0.24); }
+  /* touch: show hover overlay on tap via JS-added class */
+  .shelf-book.ready.tapped .shelf-hover { opacity: 1; pointer-events: auto; }
   .shelf-book .spine .cap {
     width: 100%; padding: 12px 10px 10px;
     background: linear-gradient(transparent, rgba(0,0,0,0.72));
@@ -148,17 +201,18 @@
     display: inline-flex; flex-direction: column; gap: 4px;
     background: var(--bg-card); border: 1px solid var(--line);
     padding: 16px 22px; border-radius: 10px; margin: 0 8px 16px;
-    text-align: left; min-width: 220px; vertical-align: top;
+    text-align: left; min-width: 220px; max-width: calc(50% - 12px); vertical-align: top;
   }
   .charcard .name { font-weight: 600; color: var(--ink); font-size: 14px; }
   .charcard .role { color: var(--accent); font-size: 11px; letter-spacing: 0.1em; margin-bottom: 6px; }
   .charcard .desc { color: var(--ink-2); font-size: 13px; line-height: 1.7; }
-  .cover .chars { margin-bottom: 36px; }
+  .cover .chars { margin-bottom: 36px; text-align: center; }
   .cover .start {
     background: var(--ink); color: var(--bg-paper);
     border: none; padding: 14px 36px; border-radius: 999px;
     font-family: var(--serif); font-size: 16px; cursor: pointer;
     letter-spacing: 0.06em; transition: 0.2s;
+    min-height: 48px; display: inline-flex; align-items: center; justify-content: center;
   }
   .cover .start:hover { background: var(--accent); transform: translateY(-1px); }
   .mode-choose { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
@@ -257,6 +311,7 @@
     background: rgba(255,255,255,0.95); border: 1px solid var(--line);
     border-radius: 999px; padding: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.08);
     backdrop-filter: blur(8px);
+    z-index: 40;
   }
   .tool-btn {
     background: transparent; border: none; padding: 8px 16px;
@@ -463,7 +518,7 @@
   .about code { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; }
   .about .arch {
     background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
-    padding: 20px; margin: 12px 0; font-size: 13px;
+    padding: 20px; margin: 12px 0; font-size: 13px; overflow-x: auto;
   }
   .about .arch .step { padding: 8px 0; border-bottom: 1px dashed var(--line); }
   .about .arch .step:last-child { border-bottom: none; }
@@ -531,6 +586,7 @@
     background: var(--bg-paper); border: 1px solid var(--line);
     border-radius: 16px; padding: 26px; width: 100%; max-width: 480px;
     max-height: 86vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+    overscroll-behavior: contain;
   }
   .dev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   .dev-head h3 { font-size: 19px; font-weight: 600; }
@@ -573,6 +629,11 @@
   @media (max-width: 768px) {
     main { padding: 28px 20px 110px; }
 
+    /* topbar: show hamburger, hide desktop nav */
+    .topbar .nav { display: none; }
+    .topbar .hamburger { display: block; }
+    .nav-drawer { display: flex; }
+
     /* shelf heading */
     .shelf-h1 { font-size: 34px; }
     .shelf-h1 .en { font-size: 12px; }
@@ -590,10 +651,11 @@
     /* reader */
     .reader h2 { font-size: 26px; }
     .para { font-size: 16px; line-height: 1.95; }
+    .read-tools { max-width: calc(100% - 40px); }
 
     /* persona */
     .persona-head h2 { font-size: 24px; }
-    .persona-grid { max-width: 520px; }
+    .persona-grid { max-width: 520px; grid-template-columns: repeat(2, 1fr); }
 
     /* story */
     .chat-header h2 { font-size: 22px; }
@@ -615,18 +677,23 @@
     /* preset grid: single column */
     .preset-grid { grid-template-columns: 1fr; }
 
+    /* cover: character cards stack vertically */
+    .cover .charcard { max-width: 100%; min-width: auto; display: flex; width: 100%; margin: 0 0 10px; }
+
     .dev-panel { padding: 22px 18px; }
+    .read-tools { max-width: none; left: 8px; right: 8px; border-radius: 24px; }
   }
 
   /* ===== Responsive: Mobile (≤480px) ===== */
   @media (max-width: 480px) {
-    main { padding: 20px 14px 100px; }
+    /* safe-area bottom for devices with home indicator */
+    main { padding: 20px 14px max(100px, calc(20px + env(safe-area-inset-bottom))); }
 
     /* topbar */
-    .topbar { padding: 9px 10px; gap: 6px; }
-    .topbar .brand { font-size: 13px; }
+    .topbar { padding: 9px 12px; gap: 8px; }
+    .topbar .brand { font-size: 14px; }
     .topbar .brand small { display: none; }
-    .nav-btn { padding: 4px 7px; font-size: 11px; letter-spacing: 0.02em; }
+    .hamburger { font-size: 20px; padding: 5px 7px; }
 
     /* shelf heading */
     .shelf-h1 { font-size: 28px; letter-spacing: 0.04em; }
@@ -651,8 +718,8 @@
     .cover h1 .en { font-size: 12px; margin-top: 6px; }
     .cover .byline { font-size: 12px; margin-bottom: 18px; }
     .cover .intro { font-size: 13px; line-height: 1.8; max-width: 100%; margin-bottom: 24px; }
-    .cover .charcard { min-width: calc(100% - 0px); display: flex; width: 100%; margin: 0 0 8px; padding: 12px 16px; }
-    .cover .chars { display: flex; flex-direction: column; }
+    .cover .chars { display: flex; flex-direction: column; align-items: stretch; }
+    .cover .charcard { display: flex; width: 100%; max-width: 100%; min-width: auto; margin: 0 0 8px; padding: 12px 16px; }
     .cover .start { width: 100%; text-align: center; padding: 12px; font-size: 14px; }
     .mode-choose { gap: 10px; }
 
@@ -679,8 +746,11 @@
     .choice-opt { font-size: 13px; padding: 10px 12px; }
 
     /* read-tools */
-    .read-tools { left: 10px; right: 10px; max-width: none; margin: 14px 0 0; padding: 5px 4px; gap: 2px; }
-    .tool-btn { padding: 7px 9px; font-size: 11px; gap: 4px; }
+    .read-tools {
+      left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom, 8px));
+      max-width: none; margin: 14px 0 0; padding: 5px 4px; gap: 2px; border-radius: 24px;
+    }
+    .tool-btn { padding: 7px 10px; font-size: 11px; gap: 4px; }
 
     /* persona pick */
     .persona-head { margin: 8px 0 20px; }
@@ -746,13 +816,31 @@
     .drop-zone { padding: 24px 12px; font-size: 13px; }
     .gen-preview h4 { font-size: 17px; }
   }
+
+  /* ===== Responsive: Landscape on small devices ===== */
+  @media (max-width: 768px) and (orientation: landscape) {
+    .topbar { padding: 8px 16px; }
+    main { padding: 16px 16px 60px; }
+    .cover h1 { font-size: 28px; }
+    .cover h1 .en { font-size: 12px; margin-top: 4px; }
+    .cover .intro { max-width: 100%; }
+    .chat-header { padding: 8px 0 16px; }
+    .chat-header .portrait { width: 56px; height: 56px; margin-bottom: 8px; }
+    .chat-header h2 { font-size: 18px; }
+    .chat-log { min-height: 160px; }
+    .read-tools { bottom: 4px; }
+    .persona-head { margin: 8px 0 16px; }
+    .persona-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 100%; }
+    .dev-panel { max-height: 80vh; padding: 18px 14px; }
+  }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="brand">活页 <small>· 让经典开口说话</small></div>
-  <div class="nav">
+  <button class="hamburger" id="hamburger" onclick="app.toggleNav()" aria-label="菜单">☰</button>
+  <div class="nav" id="topnav">
     <button class="nav-btn" data-view="cover">导航页</button>
     <button class="nav-btn" data-view="acts">传统阅读</button>
     <button class="nav-btn" data-view="chat">沉浸对话</button>
@@ -760,6 +848,19 @@
     <button class="nav-btn" data-view="account">账户</button>
     <button class="nav-btn" onclick="app.openSettings()" title="设置" style="font-size:16px;">⚙</button>
   </div>
+</div>
+<div class="nav-mobile-mask" id="nav-mask" onclick="app.closeNav()"></div>
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-head">
+    <span>活页 Folio</span>
+    <button class="nav-close" onclick="app.closeNav()">✕</button>
+  </div>
+  <button class="nav-btn" data-view="cover">🏠 导航页</button>
+  <button class="nav-btn" data-view="acts">📖 传统阅读</button>
+  <button class="nav-btn" data-view="chat">💬 沉浸对话</button>
+  <button class="nav-btn" data-view="about">ℹ️ 关于</button>
+  <button class="nav-btn" data-view="account">👤 账户</button>
+  <button class="nav-btn" onclick="app.openSettings(); app.closeNav();">⚙ 设置</button>
 </div>
 
 <main>

@@ -152,6 +152,26 @@
   }
 
   /* ============== 视图路由 ============== */
+  function toggleNav() {
+    const drawer = $('#nav-drawer');
+    const mask = $('#nav-mask');
+    const isOpen = drawer.classList.contains('show');
+    if (isOpen) { closeNav(); return; }
+    drawer.classList.add('show');
+    mask.classList.add('show');
+    // sync active state from topbar nav
+    const activeBtn = document.querySelector('.topbar .nav-btn.active, .topbar .nav .nav-btn.active');
+    const activeView = activeBtn ? activeBtn.dataset.view : 'cover';
+    drawer.querySelectorAll('.nav-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === activeView);
+    });
+  }
+  function closeNav() {
+    const drawer = $('#nav-drawer');
+    const mask = $('#nav-mask');
+    if (drawer) drawer.classList.remove('show');
+    if (mask) mask.classList.remove('show');
+  }
   const VIEWS = ['cover', 'acts', 'reader', 'chat', 'about', 'account'];
   function go(view) {
     stopSpeak();
@@ -162,6 +182,8 @@
     // reader 没有对应的 nav-btn，高亮"幕次"作为父级
     const navKey = view === 'reader' ? 'acts' : view;
     $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === navKey));
+    // close mobile nav drawer
+    closeNav();
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (view === 'reader') renderReader();
     if (view === 'acts')   renderActs();
@@ -262,6 +284,18 @@
         if (assetBtn) assetBtn.onclick = (e) => { e.stopPropagation(); openAssets(bookId); };
       }
     });
+    // touch devices: tap on ready books to toggle hover overlay
+    if (window.matchMedia('(hover: none)').matches) {
+      $$('.shelf-book.ready').forEach(el => {
+        el.addEventListener('click', function(e) {
+          if (e.target.closest('button')) return;
+          $$('.shelf-book.ready.tapped').forEach(b => {
+            if (b !== el) b.classList.remove('tapped');
+          });
+          el.classList.toggle('tapped');
+        });
+      });
+    }
   }
 
   // 主操作文案随入口模式变化
@@ -1788,7 +1822,7 @@ ${allText}
     }
 
     window.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { stopSpeak(); closeDev(); closeAdd(); closeSettings(); }
+      if (e.key === 'Escape') { stopSpeak(); closeDev(); closeAdd(); closeSettings(); closeNav(); }
       // 开发者模式：Ctrl+Shift+D
       if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
         e.preventDefault();
@@ -1800,6 +1834,12 @@ ${allText}
         e.preventDefault();
         const mask = $('#settings-mask');
         if (mask.classList.contains('show')) closeSettings(); else openSettings();
+      }
+    });
+    // Dismiss tapped shelf-book overlay when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.shelf-book.ready')) {
+        $$('.shelf-book.ready.tapped').forEach(b => b.classList.remove('tapped'));
       }
     });
   });
@@ -1832,6 +1872,8 @@ ${allText}
     restartStory,
     openAssets,
     onPickBook,
-    clearStoryCache
+    clearStoryCache,
+    toggleNav,
+    closeNav
   };
 })();
